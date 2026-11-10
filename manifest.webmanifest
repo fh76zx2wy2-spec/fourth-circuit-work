@@ -1,0 +1,11 @@
+{
+  "name": "تنظيم أعمال الدائرة الرابعة",
+  "short_name": "الدائرة الرابعة",
+  "description": "إدارة القضايا والمهام وإعداد التقرير اليومي",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f1f4f3",
+  "theme_color": "#087967",
+  "icons": [{"src":"assets/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
