@@ -124,10 +124,10 @@ export function formatDates(iso: string) {
   const tz = "Asia/Riyadh";
   const weekday = new Intl.DateTimeFormat("ar-SA", { weekday: "long", timeZone: tz }).format(d);
   const hijri = new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura", {
-    day: "numeric", month: "long", year: "numeric", timeZone: tz,
+    day: "numeric", month: "long", year: "numeric", timeZone: tz, numberingSystem: "latn",
   }).format(d).replace(/\s*هـ\s*$/, "");
   const greg = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", {
-    day: "numeric", month: "long", year: "numeric", timeZone: tz,
+    day: "numeric", month: "long", year: "numeric", timeZone: tz, numberingSystem: "latn",
   }).format(d).replace(/\s*م\s*$/, "");
   return { weekday, hijri: `${hijri} هـ`, greg: `${greg} م` };
 }

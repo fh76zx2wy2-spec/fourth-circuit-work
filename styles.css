@@ -228,3 +228,6 @@ body{background:var(--bg)}
 .side-card-title .add-task-button{min-height:44px;white-space:nowrap}
 
 button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor:pointer}
+
+.copy-case-number{display:inline;padding:0;border:0;background:none;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:.15em;cursor:pointer}
+.copy-case-number[data-copy-case-field]{margin-top:.25rem;font-size:.8rem}
