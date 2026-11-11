@@ -49,12 +49,15 @@ function fromHijri(year,month,day){
   }
   return null;
 }
-function hijriPicker(field,iso,label,{past=10,future=3,mandatory=false,parts:chosenParts}={}){
+function hijriPicker(field,iso,label,{past=10,future=3,minYear,numberedMonths=false,mandatory=false,parts:chosenParts}={}){
   const parts=chosenParts||hijriParts(iso),year=hijriParts(todayRiyadh()).year;
   const attrs=`data-hijri-field="${field}"`;
   const picker=(part,items,placeholder)=>`<select class="input hijri-date-part" ${attrs} data-hijri-part="${part}" aria-label="${label} - ${placeholder}" ${mandatory?'required':''}><option value="">${placeholder}</option>${items.map(([v,l])=>`<option value="${v}" ${parts?.[part]===v?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
-  const days=Array.from({length:30},(_,i)=>[i+1,String(i+1)]),months=HIJRI_MONTHS.map((v,i)=>[i+1,v]);
-  const years=Array.from({length:past+future+1},(_,i)=>year+future-i).map(v=>[v,String(v)+' هـ']);
+  const days=Array.from({length:30},(_,i)=>[i+1,String(i+1)]),months=HIJRI_MONTHS.map((v,i)=>[i+1,numberedMonths?`${i+1} - ${v}`:v]);
+  const yearValues=minYear===undefined
+    ?Array.from({length:past+future+1},(_,i)=>year+future-i)
+    :Array.from({length:year+future-minYear+1},(_,i)=>minYear+i);
+  const years=yearValues.map(v=>[v,String(v)+' هـ']);
   return `<div class="form-group hijri-field ${mandatory?'mandatory':''}"><label class="form-label">${label}${mandatory?CASE_STAR:''}</label><div class="hijri-parts" role="group" aria-label="${label}">${picker('day',days,'اليوم')}${picker('month',months,'الشهر')}${picker('year',years,'السنة')}</div><small class="hijri-help">التاريخ الهجري وفق تقويم أم القرى${!mandatory?' — اتركه فارغًا إذا لم يوجد':''}</small></div>`;
 }
 function readHijriPicker(field,required=false){
@@ -373,13 +376,15 @@ function caseDate(form,id,options={}){
 const control=workdaySelect(form.session_date,`id="${id}" data-form-field="session_date" required${options.disabled?' disabled':''}`,label);
 return caseField('session_date',`<label class="form-label" for="${id}">${label}${CASE_STAR}</label>`,control);
 }
+const MIN_PREVIOUS_SESSION_YEAR=1430;
 function casePreviousDate(form){
- return caseField('previous_date','',hijriPicker('previous_date',form.previous_date,'تاريخ الجلسة السابقة (هجري)',{past:25,future:1,mandatory:true,parts:form.previous_parts}),{wide:true});
+ return caseField('previous_date','',hijriPicker('previous_date',form.previous_date,'تاريخ الجلسة السابقة (هجري)',{minYear:MIN_PREVIOUS_SESSION_YEAR,future:0,numberedMonths:true,mandatory:true,parts:form.previous_parts}),{wide:true});
 }
 function caseDateResult(form){
  if(form.previous_parts){
   const {day,month,year}=form.previous_parts;
   if(!day||!month||!year)return {error:'أكمل اليوم والشهر والسنة بالتاريخ الهجري.'};
+  if(year<MIN_PREVIOUS_SESSION_YEAR||year>hijriParts(todayRiyadh()).year)return {error:'اختر سنة من 1430 هـ إلى السنة الهجرية الحالية.'};
   const value=fromHijri(year,month,day);
   return value?{value}:{error:'التاريخ الهجري غير صحيح.'};
  }
