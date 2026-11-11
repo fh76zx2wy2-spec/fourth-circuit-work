@@ -275,25 +275,11 @@ export function Index() {
   }
   return (
     <div className="min-h-screen pb-44 lg:pb-10">
-      <header className="relative overflow-hidden bg-gradient-navy text-primary-foreground">
-        <div className="absolute inset-0 arch-pattern opacity-60" aria-hidden />
-        <div className="relative mx-auto max-w-7xl px-4 py-5 sm:px-5 sm:py-10 flex items-center gap-3 sm:gap-5">
-          <div className="hidden sm:grid place-items-center size-16 rounded-2xl border border-gold/50 text-gold shrink-0">
-            <Scale className="size-8" />
-          </div>
-          <div className="flex-1">
-            <p className="text-gold-soft text-sm sm:text-base font-medium">المحكمة العامة بأبي عريش</p>
-            <h1 className="text-xl sm:text-3xl font-bold mt-1">الدائرة العامة الرابعة</h1>
-          </div>
-          <div className="hidden sm:flex items-center gap-2 text-xs">
-            <span className="text-gold-soft">{profile?.display_name ?? ""}</span>
-            <button type="button" onClick={() => void signOut()} className="rounded-lg border border-gold/50 p-2" aria-label="تسجيل الخروج"><LogOut className="size-4" /></button>
-          </div>
-          <button type="button" onClick={() => void signOut()} className="sm:hidden rounded-lg border border-gold/50 p-2" aria-label="تسجيل الخروج"><LogOut className="size-4" /></button>
-          <span className="hidden sm:inline rounded-full border border-gold/60 bg-gold/15 px-3 py-1 text-xs sm:text-sm text-gold-soft whitespace-nowrap">منظّم توزيع الجلسات</span>
-        </div>
-        <div className="gold-rule" />
-      </header>
+      <div className="mx-auto max-w-7xl px-4 sm:px-5 flex justify-end">
+        <button type="button" onClick={() => void signOut()} className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-primary" aria-label="تسجيل الخروج">
+          <LogOut className="size-4" /> تسجيل الخروج
+        </button>
+      </div>
 
       <main className="mx-auto max-w-7xl px-4 sm:px-5 py-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start">
         <section className="space-y-5 min-w-0">
@@ -489,7 +475,7 @@ export function Index() {
         </section>
       </main>
 
-      <div className="lg:hidden fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur p-3 grid grid-cols-2 gap-2">
+      <div className="lg:hidden fixed inset-x-0 bottom-[calc(71px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-card/95 backdrop-blur p-3 grid grid-cols-2 gap-2">
         <Actions {...{ distributed, ready, busy, draw, save, saveData: saveRemote, canApprove: profile?.role === "admin" || profile?.can_approve === true, disabled: !hearings.length || !active.length || !remoteReady || !workday }} compact />
       </div>
       {confirmRedistribution && <div className="fixed inset-0 z-50 grid place-items-center bg-navy-deep/60 p-4" role="dialog" aria-modal="true" aria-label="تأكيد إعادة التوزيع"><div className="w-full max-w-sm rounded-2xl bg-card p-5 text-center shadow-xl"><AlertTriangle className="mx-auto size-11 text-warning" /><h2 className="mt-3 text-base font-bold text-primary">هل أنت متأكد من إعادة التوزيع؟</h2><p className="mt-2 text-sm text-muted-foreground">سيُعاد توزيع جميع جلسات اليوم من جديد.</p><div className="mt-5 grid grid-cols-2 gap-2"><button type="button" onClick={() => { setConfirmRedistribution(false); performDraw(); }} className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">نعم، أعد التوزيع</button><button type="button" onClick={() => setConfirmRedistribution(false)} className="rounded-xl border border-border px-4 py-2 text-sm">إلغاء</button></div></div></div>}

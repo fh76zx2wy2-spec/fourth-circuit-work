@@ -167,21 +167,10 @@ body{background:var(--bg)}
  .modal textarea.input{min-height:112px}
  .modal .source-expanded{max-height:52vh}
 }
-
-/* Hearing distribution uses the shared site palette and a separate sign-in. */
-#hearings-section[hidden],#app[hidden]{display:none}
-.hearings-topbar{height:auto;min-height:72px;gap:12px;flex-wrap:wrap;padding-block:12px}
-.hearings-topbar a,.hearings-link{text-decoration:none}
-.hearings-topbar nav{display:flex;gap:6px;flex-wrap:wrap}
-.hearings-link{margin-block:4px}
-#hearings-root{display:block;min-height:50vh}
-@media(max-width:600px){
- .hearings-topbar{padding-inline:12px}
- .hearings-topbar .topbar-title{font-size:16px}
- .hearings-topbar nav .btn{font-size:12px;padding-inline:8px}
-}
-@media (max-width: 760px) {
-  html, body { max-width: 100%; overflow-x: clip; }
-  .circuit-app .topbar { min-height: 76px; height: auto; }
-  .circuit-app .topbar-heading { min-width: 0; }
+/* The hearing workspace shares the existing navigation and page content. */
+.circuit-app .service-tiles{grid-template-columns:repeat(5,minmax(0,1fr))}
+#hearings-root{display:block;min-width:0}
+@media(max-width:760px){
+ .circuit-app:has(#hearings-root){max-width:100%;overflow-x:clip}
+ .circuit-app .service-tile{min-width:0;overflow-wrap:anywhere}
 }
