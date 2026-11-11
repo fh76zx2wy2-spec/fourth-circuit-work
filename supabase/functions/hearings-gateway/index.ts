@@ -40,7 +40,14 @@ async function issueAccessToken(userId: string) {
   const { data: signedIn, error } = await auth.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: "magiclink" });
   if (error || signedIn.user?.id !== userId || !signedIn.session) throw new Error("hearing_session_failed");
   const accessToken = signedIn.session.access_token;
+  const encoded = accessToken.split(".")[1];
+  const claims = JSON.parse(atob(encoded.replace(/-/g, "+").replace(/_/g, "/")));
+  const { error: registrationError } = await admin.rpc("register_hearings_gateway_session", {
+    p_session_id: claims.session_id,
+    p_user_id: userId,
+  });
   const { error: revokeError } = await auth.auth.signOut({ scope: "local" });
+  if (registrationError) throw registrationError;
   if (revokeError) throw revokeError;
   return accessToken;
 }
