@@ -171,6 +171,14 @@ body{background:var(--bg)}
 .circuit-app .service-tiles{grid-template-columns:repeat(5,minmax(0,1fr))}
 #hearings-root{display:block;min-width:0}
 @media(max-width:760px){
- .circuit-app:has(#hearings-root){max-width:100%;overflow-x:clip}
+ html:has(.circuit-app),body:has(.circuit-app){max-width:100%;overflow-x:clip}
  .circuit-app .service-tile{min-width:0;overflow-wrap:anywhere}
+}
+
+.topbar-clock{display:inline-block;white-space:nowrap;font-variant-numeric:tabular-nums}
+.circuit-app .service-tile.active{box-shadow:inset 0 -3px #d8b552}
+.circuit-app .sessions-nav{display:inline-flex;margin-bottom:16px}
+@media(max-width:760px){
+ .circuit-app .topbar-heading{min-width:0}
+ .circuit-app .topbar{height:auto;min-height:66px;padding-block:6px}
 }
