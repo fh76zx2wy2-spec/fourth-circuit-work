@@ -288,6 +288,16 @@ export function Index() {
               <label className="block">
                 <span className="sr-only">التاريخ</span>
                 <input type="date" value={date} onChange={(e) => e.target.value && selectDate(e.target.value)}
+                  onClick={(event) => {
+                    const input = event.currentTarget;
+                    if (!matchMedia("(hover: hover) and (pointer: fine)").matches || typeof input.showPicker !== "function") return;
+                    try {
+                      input.showPicker();
+                      event.preventDefault();
+                    } catch {
+                      // Keep the browser's native date interaction if the picker cannot be opened here.
+                    }
+                  }}
                   className="h-12 w-full rounded-xl border border-input bg-card px-3 text-base focus:outline-none focus:ring-2 focus:ring-ring" />
               </label>
               <p className="text-sm sm:text-base leading-7">
