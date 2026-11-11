@@ -188,7 +188,7 @@ body{background:var(--bg)}
 .case-error{display:block;font-size:12px;line-height:1.5;margin-top:5px}
 .case-error[hidden]{display:none}
 .case-invalid input,.case-invalid select,.case-invalid textarea{border-color:var(--red,#b3262e)!important;box-shadow:0 0 0 1px var(--red,#b3262e)}
-.case-time{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.25fr);gap:4px}
+.case-time{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:4px}
 .case-time .input{min-width:0;padding-inline:4px}
 .bulk-modal{width:min(1200px,100%);max-width:1200px}
 #bulk-case-form{display:flex;flex-direction:column;min-height:0;overflow:hidden}
@@ -226,3 +226,5 @@ body{background:var(--bg)}
 .case-entry-modes .btn{flex:1}
 .side-card-title{gap:8px;flex-wrap:wrap}
 .side-card-title .add-task-button{min-height:44px;white-space:nowrap}
+
+button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor:pointer}
