@@ -155,7 +155,7 @@ function tasksPage(){const visible=state.tasks.filter(t=>!t.deleted_at&& (state.
  <div class="filters"><input type="search" class="search" data-task-search placeholder="ابحث عن بريد أو قضية أو رقم تذكرة..." value="${esc(state.taskSearch)}"/><div class="seg">${[['open','قيد الإنجاز'],['done','المنجزة'],['all','الجميع']].map(([v,n])=>`<button data-task-filter="${v}" class="${state.taskFilter===v?'active':''}">${n}</button>`).join('')}</div></div>
  <div class="tasks-list">${visible.length?visible.sort((a,b)=>(a.status==='done')-(b.status==='done')||({urgent:0,normal:1,low:2}[a.priority]-({urgent:0,normal:1,low:2}[b.priority]))||String(a.due_date||'9999').localeCompare(String(b.due_date||'9999'))).map(taskRow).join(''):`<div class="card empty"><b>لا توجد مهام في هذا العرض</b><p>يمكن إضافة مهمة خاصة بالبريد، أو قضية تحتاج إلى تصحيح، أو تذكرة، أو أي عمل آخر.</p></div>`}</div>`;
 }
-function taskRow(t){return `<article class="task-row ${t.status==='done'?'task-done':''}"><div class="task-check-wrap">${isJudge()?`<button class="task-check" title="${t.status==='done'?'إعادة فتح المهمة':'تحديد أنها أُنجزت'}" data-task-toggle="${esc(t.id)}">${t.status==='done'?'✓':'○'}</button>`:`<span class="task-check readonly">${t.status==='done'?'✓':'○'}</span>`}</div><div class="task-info"><div class="task-title">${esc(t.title)} <span class="badge ${t.priority==='urgent'?'priority-urgent':'priority-normal'}">${priorityNames[t.priority]||'عادية'}</span></div><div class="task-details">${esc(short(t.details,240))}</div><div class="task-meta"><span>${esc(taskCategories[t.category]||'أخرى')}</span>${t.case_number?`<span>رقم القضية: ${esc(t.case_number)}</span>`:''}${t.due_date?`<span>الموعد: ${hijri(t.due_date)}</span>`:''}<span>أضافها: ${esc(profileName(t.created_by))}</span><span>${stamp(t.created_at)}</span>${t.status==='done'?`<span class="done-info">أُنجزت بواسطة: ${esc(profileName(t.completed_by))}</span>`:''}</div></div><div class="task-actions"><span class="badge ${t.status==='done'?'approved':'ready'}">${t.status==='done'?'منجزة':'قيد الإنجاز'}</span><button class="btn btn-small btn-soft" data-task-edit="${esc(t.id)}">✎ تعديل</button></div></article>`;}
+function taskRow(t){return `<article class="task-row ${t.status==='done'?'task-done':''}"><div class="task-check-wrap">${isJudge()?`<button class="task-check" title="${t.status==='done'?'إعادة فتح المهمة':'تحديد أنها أُنجزت'}" data-task-toggle="${esc(t.id)}">${t.status==='done'?'✓':'○'}</button>`:`<span class="task-check readonly">${t.status==='done'?'✓':'○'}</span>`}</div><div class="task-info"><div class="task-title">${esc(t.title)} <span class="badge ${t.priority==='urgent'?'priority-urgent':'priority-normal'}">${priorityNames[t.priority]||'عادية'}</span></div><div class="task-details">${esc(short(t.details,240))}</div><div class="task-meta"><span>${esc(taskCategories[t.category]||'أخرى')}</span>${t.case_number?`<span>رقم القضية: ${esc(t.case_number)}</span>`:''}${t.due_date?`<span>الموعد: ${hijri(t.due_date)}</span>`:''}<span>أضافها: ${esc(profileName(t.created_by))}</span><span>${stamp(t.created_at)}</span><span>${esc(profileName(t.updated_by||t.created_by))}</span>${t.status==='done'?`<span class="done-info">أُنجزت بواسطة: ${esc(profileName(t.completed_by))}</span>`:''}</div></div><div class="task-actions"><span class="badge ${t.status==='done'?'approved':'ready'}">${t.status==='done'?'منجزة':'قيد الإنجاز'}</span><button class="btn btn-small btn-soft" data-task-edit="${esc(t.id)}">✎ تعديل</button></div></article>`;}
 function taskEditor(){const f=state.taskForm,id=state.taskEditorId;const fld=(name,label,type='text')=>`<div class="form-group"><label class="form-label">${label}</label><input class="input" type="${type}" data-task-field="${name}" value="${esc(f[name]||'')}" /></div>`;
  return `<div class="modal-backdrop"><div class="modal task-modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>${id==='new'?'إضافة مهمة أو تذكير':'تعديل المهمة'}</h2><small>يُحفظ اسم من أضاف المهمة ومن أنجزها.</small></div><button class="icon-button" data-action="close-task-editor">✕</button></div><form id="task-form"><div class="modal-body"><div class="form-grid two"><div class="form-group wide"><label class="form-label">عنوان المهمة *</label><input class="input" data-task-field="title" maxlength="220" required placeholder="مثل: الرد على البريد بخصوص القضية ..." value="${esc(f.title||'')}" /></div><div class="form-group"><label class="form-label">نوع المهمة</label><select class="input" data-task-field="category">${Object.entries(taskCategories).map(([k,v])=>`<option value="${k}" ${f.category===k?'selected':''}>${v}</option>`).join('')}</select></div>${fld('case_number','رقم القضية أو التذكرة (اختياري)')}<div class="form-group"><label class="form-label">الأولوية</label><select class="input" data-task-field="priority">${Object.entries(priorityNames).map(([k,v])=>`<option value="${k}" ${f.priority===k?'selected':''}>${v}</option>`).join('')}</select></div>${hijriPicker('due_date',f.due_date,'التاريخ المطلوب (هجري)',{past:5,future:10})}<div class="form-group wide"><label class="form-label">تفاصيل المطلوب</label><textarea class="input" rows="4" data-task-field="details" placeholder="ما الذي يلزم عمله؟ وما الرسالة أو المستند الذي يرجع إليه؟">${esc(f.details||'')}</textarea></div></div></div><div class="modal-foot">${id!=='new'?'<button type="button" class="btn btn-danger" data-action="delete-task">إزالة المهمة</button>':''}<button type="button" class="btn" data-action="close-task-editor">إلغاء</button><button type="submit" class="btn btn-primary">✓ حفظ المهمة</button></div></form></div></div>`;}
 function openTaskEditor(id='new'){state.editorId=null;state.detailId=null;state.taskEditorId=id;state.taskForm=id==='new'?initialTask():{...state.tasks.find(t=>t.id===id)};render();}
@@ -209,13 +209,22 @@ async function saveCase(status='ready'){if(!validateForm())return;const f={...st
 async function approveCase(id){if(!isJudge())return;const c=state.cases.find(x=>x.id===id);if(!c)return;if(c.stage!=='first'&&!c.previous_minutes){notify('يجب حفظ الضبط الأصلي قبل الاعتماد.','error');return;}if(!window.confirm('هل راجعت بيانات القضية والضبط الأصلي قبل الاعتماد؟'))return;if(DEMO){c.status='approved';c.approved_by=actorId();c.updated_at=new Date().toISOString();state.reportApprovals=state.reportApprovals.filter(r=>r.session_date!==c.session_date);demoEvent(`${state.profile.display_name} اعتمد القضية ${c.case_number}`);closeModal();return;}const {error}=await state.client.from('cases').update({status:'approved',approved_by:state.user.id,updated_by:state.user.id}).eq('id',id);if(error)return notify('فشل الاعتماد: '+error.message,'error');notify('تم اعتماد بيانات القضية','success');closeModal();await loadAll();}
 async function softDeleteCase(){const id=state.editorId;if(id==='new')return;if(!window.confirm('هل تريد إزالة هذه القضية من الجدول؟ ستبقى نسخة في سجل المراجعات.'))return;if(DEMO){const c=state.cases.find(x=>x.id===id);state.cases=state.cases.filter(x=>x.id!==id);state.reportApprovals=state.reportApprovals.filter(r=>r.session_date!==c?.session_date);demoEvent(`${state.profile.display_name} أزال القضية ${c?.case_number||''}`);notify('أُزيلت القضية من المعاينة.','success');closeModal();return;}const {error}=await state.client.from('cases').update({deleted_at:new Date().toISOString(),updated_by:state.user.id}).eq('id',id);if(error)return notify(error.message,'error');notify('أُزيلت القضية من العرض.','success');closeModal();await loadAll();}
 async function loadProfile(){const {data,error}=await state.client.from('profiles').select('*').eq('id',state.user.id).maybeSingle();if(error)throw error;state.profile=data||null;}
-async function loadAll(){if(DEMO){render();return;}if(!state.profile?.is_active)return;
+let lastDataSnapshot = '';
+let loadSequence = 0;
+async function loadAll({background=false}={}){if(DEMO){render();return;}if(!state.profile?.is_active)return;
+ const userId=state.user.id;
+ const sequence=++loadSequence;
  const [cases,notifications,profiles,tasks,reports]=await Promise.all([
   state.client.from('cases').select('*').is('deleted_at',null).order('session_date',{ascending:true}),
   state.client.from('notifications').select('*').eq('recipient_id',state.user.id).order('created_at',{ascending:false}).limit(90),
   state.client.from('profiles').select('id,display_name,role').eq('is_active',true),
   state.client.from('tasks').select('*').is('deleted_at',null).order('created_at',{ascending:false}),
   state.client.from('report_approvals').select('*')]);
+ if(state.user?.id!==userId||sequence!==loadSequence)return;
+ const snapshot=JSON.stringify([cases.data,notifications.data,profiles.data,tasks.data,reports.data]);
+ const changed=snapshot!==lastDataSnapshot;
+ lastDataSnapshot=snapshot;
+ if(background&&!changed)return;
  if(cases.error)notify('تعذّر تحديث القضايا: '+cases.error.message,'error');else state.cases=cases.data||[];
  if(tasks.error)notify('تعذّر تحديث المهام: '+tasks.error.message,'error');else state.tasks=tasks.data||[];
  if(reports.error)console.warn('Report approvals:',reports.error);else state.reportApprovals=reports.data||[];
@@ -225,7 +234,7 @@ async function loadAll(){if(DEMO){render();return;}if(!state.profile?.is_active)
   state.notifications=next;state.initialNotifLoad=false;
  }
  if(!profiles.error)state.profiles=profiles.data||[];render();}
-async function refreshProfile(){try{await loadProfile();if(state.profile?.is_active)await loadAll();else render();}catch(e){notify(e.message,'error');}}
+async function refreshProfile(){try{await loadProfile();render();if(state.profile?.is_active){await loadAll();subscribeChanges();}}catch(e){notify(e.message,'error');}}
 async function init(){if(DEMO){
   // إزالة جميع بيانات المعاينة القديمة مرة واحدة بعد الترقية.
   if(!localStorage.getItem('fourth-circuit-v3-reset-done')){
@@ -236,15 +245,27 @@ async function init(){if(DEMO){
   if(d){state.cases=d.cases||[];state.tasks=d.tasks||[];state.notifications=d.notifications||[];state.reportApprovals=d.reportApprovals||[];}else persistDemo();
   const chosen=localStorage.getItem('fourth-circuit-demo-profile');
   state.profile=STAFF.find(p=>p.id===chosen)||null;render();return;}
-try{const mod=await import('https://esm.sh/@supabase/supabase-js@2.119.0?bundle');state.client=mod.createClient(CONFIG.supabaseUrl,CONFIG.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true}});const {data:{session},error}=await state.client.auth.getSession();if(error)throw error;state.user=session?.user||null;if(state.user){await loadProfile();if(state.profile?.is_active){await loadAll();subscribeChanges();}}state.client.auth.onAuthStateChange((_ev,session)=>{const old=state.user?.id;state.user=session?.user||null;if(state.user?.id!==old){if(state.sub){state.client.removeChannel(state.sub);state.sub=null;}state.profile=null;state.notifications=[];state.initialNotifLoad=true;render();if(state.user){setTimeout(async()=>{await refreshProfile();if(state.profile?.is_active)subscribeChanges();},10);}}});render();}catch(e){app.innerHTML=`<div class="empty" style="min-height:90vh"><b>تعذّر تشغيل الموقع</b><p>${esc(e.message)}. تحقق من بيانات الاتصال بالقاعدة والاتصال بالإنترنت.</p></div>`;}}
-function subscribeChanges(){if(state.sub)return;state.sub=state.client.channel('case-team-sync').on('postgres_changes',{event:'*',schema:'public',table:'cases'},()=>loadAll()).on('postgres_changes',{event:'*',schema:'public',table:'tasks'},()=>loadAll()).on('postgres_changes',{event:'*',schema:'public',table:'report_approvals'},()=>loadAll()).on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:`recipient_id=eq.${state.user.id}`},()=>loadAll()).subscribe();}
+try{const mod=await import('https://esm.sh/@supabase/supabase-js@2.119.0?bundle');state.client=mod.createClient(CONFIG.supabaseUrl,CONFIG.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true}});const {data:{session},error}=await state.client.auth.getSession();if(error)throw error;state.user=session?.user||null;if(state.user){await loadProfile();if(state.profile?.is_active){await loadAll();subscribeChanges();}}state.client.auth.onAuthStateChange((_ev,session)=>{const old=state.user?.id;state.user=session?.user||null;if(state.user?.id!==old){if(state.sub){state.client.removeChannel(state.sub);state.sub=null;}state.profile=null;state.notifications=[];lastDataSnapshot='';state.initialNotifLoad=true;render();if(state.user){setTimeout(async()=>{await refreshProfile();if(state.profile?.is_active)subscribeChanges();},10);}}});render();}catch(e){app.innerHTML=`<div class="empty" style="min-height:90vh"><b>تعذّر تشغيل الموقع</b><p>${esc(e.message)}. تحقق من بيانات الاتصال بالقاعدة والاتصال بالإنترنت.</p></div>`;}}
+let backgroundRefreshRunning=false;
+async function refreshInBackground(){
+ if(backgroundRefreshRunning||!state.profile?.is_active)return;
+ backgroundRefreshRunning=true;
+ try{await loadAll({background:true});}finally{backgroundRefreshRunning=false;}
+}
+if(!DEMO){
+ window.setInterval(refreshInBackground,4000);
+ document.addEventListener('visibilitychange',refreshInBackground);
+}
+function subscribeChanges(){if(state.sub)return;state.sub=state.client.channel('case-team-sync').on('postgres_changes',{event:'*',schema:'public',table:'cases'},refreshInBackground).on('postgres_changes',{event:'*',schema:'public',table:'tasks'},refreshInBackground).on('postgres_changes',{event:'*',schema:'public',table:'report_approvals'},refreshInBackground).on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:`recipient_id=eq.${state.user.id}`},refreshInBackground).subscribe(status=>{if(status==='SUBSCRIBED')refreshInBackground();});}
 function authBusy(b){state.authBusy=b;const btn=$('#auth-form button[type=submit]');if(btn)btn.disabled=b;}
 async function joinDevice(choice){
-  if(!state.client||!choice)return;
+  if(!state.client||!choice||state.authBusy)return;
   state.authBusy=true;
   try{
-    const {data:existing}=await state.client.auth.getSession();
+    const {data:existing,error:sessionError}=await state.client.auth.getSession();
+    if(sessionError)throw sessionError;
     if(existing?.session?.user){
+      state.user=existing.session.user;
       await loadProfile();
       if(state.profile?.is_active){
         if(state.profile.display_name!==choice.display_name){
