@@ -103,7 +103,7 @@ function shell(){
    <div class="brand"><div class="brand-symbol" aria-hidden="true">▦</div><div><b>تنظيم أعمال<br>الدائرة الرابعة</b><small>مساحة العمل المشتركة</small></div></div>
    <div class="sidebar-caption">القائمة الرئيسية</div><nav class="nav">${nav.map(([key,label,ico])=>`<button data-nav="${key}" class="${state.screen===key?'active':''}"><span class="nav-icon">${ico}</span>${label}${key==='tasks'&&state.tasks.some(t=>t.status==='open'&&!t.deleted_at)?`<span class="nav-count">${state.tasks.filter(t=>t.status==='open'&&!t.deleted_at).length}</span>`:''}</button>`).join('')}</nav>
    <div class="sidebar-bottom"><div class="profile-mini"><span class="avatar">${esc((state.profile?.display_name||'ت')[0])}</span><div><b>${esc(state.profile?.display_name||'النسخة التجريبية')}</b><small>${roleTitle(state.profile?.role)}</small></div></div><button class="side-switch" data-action="logout">↩ ${DEMO?'تبديل المستخدم':'تسجيل الخروج'}</button></div>
-  </aside><main class="main"><header class="topbar ministry-top"><div class="topbar-heading"><div class="topbar-title">تنظيم أعمال الدائرة الرابعة</div><div class="topbar-date">${hijri(todayRiyadh())} <span>·</span> ${gregorian(todayRiyadh())}</div></div><div class="toolbar"><span class="header-profile">${esc(state.profile?.display_name||'')}</span><button class="icon-button mobile-logout" data-action="logout" title="${DEMO?'تبديل الاسم':'تسجيل خروج'}">⇄</button><button class="icon-button" data-action="refresh" title="تحديث البيانات">↻</button><button class="icon-button notification-bell" data-action="toggle-notifs" title="الإشعارات">◌ ${n?`<span class="notif-count">${n}</span>`:''}</button></div>${state.showNotifs?renderNotifPopup():''}</header>
+  </aside><main class="main"><header class="topbar ministry-top"><div class="topbar-heading"><div class="topbar-title">تنظيم أعمال الدائرة الرابعة</div><a class="btn btn-small hearings-link" href="#hearings">توزيع الجلسات</a><div class="topbar-date">${hijri(todayRiyadh())} <span>·</span> ${gregorian(todayRiyadh())}</div></div><div class="toolbar"><span class="header-profile">${esc(state.profile?.display_name||'')}</span><button class="icon-button mobile-logout" data-action="logout" title="${DEMO?'تبديل الاسم':'تسجيل خروج'}">⇄</button><button class="icon-button" data-action="refresh" title="تحديث البيانات">↻</button><button class="icon-button notification-bell" data-action="toggle-notifs" title="الإشعارات">◌ ${n?`<span class="notif-count">${n}</span>`:''}</button></div>${state.showNotifs?renderNotifPopup():''}</header>
   <div class="content"><div class="service-tiles">
    <button class="service-tile" data-nav="dashboard"><span class="tile-symbol">⌂</span><span>الرئيسية</span></button>
    <button class="service-tile" data-nav="cases"><span class="tile-symbol">▤</span><span>قضايا الجلسات</span></button>
@@ -187,8 +187,8 @@ async function approveReport(){if(!isJudge())return notify('اعتماد الت�
  try{if(DEMO){state.reportApprovals=state.reportApprovals.filter(x=>x.session_date!==state.filterDate);state.reportApprovals.push({session_date:state.filterDate,approved_at:new Date().toISOString(),approved_by:actorId(),case_count:all.length});demoEvent(`${state.profile.display_name} اعتمد تقرير جلسات ${state.filterDate}`);render();return;}const {error}=await state.client.from('report_approvals').upsert({session_date:state.filterDate,approved_at:new Date().toISOString(),case_count:all.length},{onConflict:'session_date'});if(error)throw error;await loadAll();notify('تم اعتماد التقرير ويمكن حفظ الصورة.','success');}catch(e){notify('تعذّر اعتماد التقرير: '+e.message,'error');}}
 function render(){if(!dayWithinWindow(state.filterDate))state.filterDate=nextWorkday();if(!app)return;if(DEMO&&!state.profile){app.innerHTML=selectUserScreen();return;}if(!DEMO&&!state.user){app.innerHTML=authScreen();return;}if(!DEMO&&!state.profile?.is_active){app.innerHTML=pendingScreen();return;}app.innerHTML=shell();}
 function selectUserScreen(){return `<div class="choose-screen"><div class="choose-header"><span class="choose-emblem">▦</span><span>تنظيم أعمال الدائرة الرابعة</span></div><div class="choose-card"><div class="eyebrow">مساحة العمل</div><h1>مرحبًا بك</h1><p>اختر اسمك للدخول، وسيظهر اسمك عند إضافة القضايا والمهام وتعديلها.</p><div class="staff-grid">${STAFF.map(p=>`<button data-person="${esc(p.id)}" class="staff-choice"><span class="staff-avatar">${esc(p.display_name[0])}</span><span><b>${esc(p.display_name)}</b><small>${roleTitle(p.role)}</small></span><span class="staff-arrow">←</span></button>`).join('')}</div><div class="selector-notice">الحفظ الحالي محلي في هذا الجهاز فقط إلى أن تُفعّل قاعدة بيانات مستقلة. اختيار الاسم وحده لا يؤكد هوية الموظف. لا تُدخل معلومات قضائية حقيقية قبل تفعيل الحفظ المشترك المحمي.</div></div><div class="choose-foot">مساحة عمل مستقلة — دون شعار أو انتماء مؤسسي.</div></div>`;}
-function authScreen(){return `<div class="choose-screen"><div class="choose-header"><span class="choose-emblem">▦</span><span>تنظيم أعمال الدائرة الرابعة</span></div><div class="choose-card auth-choice"><div class="eyebrow">الدخول باختيار الاسم</div><h1>اختر اسمك</h1><p>لا يلزم بريد إلكتروني أو كلمة مرور. عند أول استخدام على جهاز جديد، يلزم اعتماد الجهاز من مسؤول قاعدة البيانات للسماح بالاطلاع على القضايا.</p><div class="staff-grid">${STAFF.map(p=>`<button data-person="${esc(p.id)}" class="staff-choice"><span class="staff-avatar">${esc(p.display_name[0])}</span><span><b>${esc(p.display_name)}</b><small>${roleTitle(p.role)}</small></span><span class="staff-arrow">←</span></button>`).join('')}</div><div class="selector-notice">لكل جهاز اعتماد مرة واحدة لحماية البيانات؛ ويظل الدخول بعد ذلك بالاسم فقط. اختيار اسم غير صاحب الجهاز لا يمنحه صلاحياته.</div></div></div>`;}
-function pendingScreen(){return `<div class="auth-screen"><div class="auth-art"><h1>تنظيم أعمال الدائرة الرابعة</h1><p>بيانات القضايا محمية بصلاحيات محددة.</p></div><div class="auth-form-wrap"><div class="auth-form"><div class="eyebrow">الحساب قيد المراجعة</div><h2>بانتظار اعتماد الجهاز</h2><p>تم إنشاء هوية مؤقتة لهذا الجهاز، ولم تُعتمد صلاحية الوصول بعد. يراجع المشرف طلب الجهاز ثم يربطه باسم صاحبه، دون بريد أو كلمة مرور.</p><p class="hint">معرّف الجهاز: ${esc(state.user?.id||"غير متاح")}</p><button class="btn" data-action="refresh-profile">التحقق مجددًا</button><button class="text-button" data-action="logout">تسجيل الخروج</button></div></div></div>`;}
+function authScreen(){return `<div class="choose-screen"><div class="choose-header"><span class="choose-emblem">▦</span><span>تنظيم أعمال الدائرة الرابعة</span></div><div class="choose-card auth-choice"><div class="eyebrow">الدخول باختيار الاسم</div><h1>اختر اسمك</h1><a class="btn hearings-link" href="#hearings">توزيع الجلسات</a><p>لا يلزم بريد إلكتروني أو كلمة مرور. عند أول استخدام على جهاز جديد، يلزم اعتماد الجهاز من مسؤول قاعدة البيانات للسماح بالاطلاع على القضايا.</p><div class="staff-grid">${STAFF.map(p=>`<button data-person="${esc(p.id)}" class="staff-choice"><span class="staff-avatar">${esc(p.display_name[0])}</span><span><b>${esc(p.display_name)}</b><small>${roleTitle(p.role)}</small></span><span class="staff-arrow">←</span></button>`).join('')}</div><div class="selector-notice">لكل جهاز اعتماد مرة واحدة لحماية البيانات؛ ويظل الدخول بعد ذلك بالاسم فقط. اختيار اسم غير صاحب الجهاز لا يمنحه صلاحياته.</div></div></div>`;}
+function pendingScreen(){return `<div class="auth-screen"><div class="auth-art"><h1>تنظيم أعمال الدائرة الرابعة</h1><p>بيانات القضايا محمية بصلاحيات محددة.</p></div><div class="auth-form-wrap"><div class="auth-form"><div class="eyebrow">الحساب قيد المراجعة</div><h2>بانتظار اعتماد الجهاز</h2><a class="btn hearings-link" href="#hearings">توزيع الجلسات</a><p>تم إنشاء هوية مؤقتة لهذا الجهاز، ولم تُعتمد صلاحية الوصول بعد. يراجع المشرف طلب الجهاز ثم يربطه باسم صاحبه، دون بريد أو كلمة مرور.</p><p class="hint">معرّف الجهاز: ${esc(state.user?.id||"غير متاح")}</p><button class="btn" data-action="refresh-profile">التحقق مجددًا</button><button class="text-button" data-action="logout">تسجيل الخروج</button></div></div></div>`;}
 function clearPreviousSession(form){
  form.previous_date=null;
  form.previous_minutes='';
@@ -347,4 +347,41 @@ document.addEventListener('change',e=>{
  if(e.target.matches('[data-approved-only]')){state.posterApprovedOnly=e.target.checked;render();}
 });
 document.addEventListener('submit',e=>{if(e.target.id==='case-form'){e.preventDefault();saveCase('ready');}if(e.target.id==='task-form'){e.preventDefault();saveTask();}});
-init();
+const hearingsSection=$('#hearings-section');
+let hearingsMount;
+function syncWorkspace(){
+ const destination=location.hash.slice(1);
+ const showHearings=destination==='hearings';
+ app.hidden=showHearings;
+ hearingsSection.hidden=!showHearings;
+ if(showHearings){
+  window.scrollTo(0,0);
+  if(!hearingsMount){
+   const container=$('#hearings-root');
+   hearingsMount=Promise.all([import('./assets/hearings/main.js'),workspaceReady]).then(([module])=>{
+    module.mount(container,{
+     getToken:async()=>state.client?(await state.client.auth.getSession()).data.session?.access_token??null:null,
+     subscribe:listener=>{
+      if(!state.client)return ()=>{};
+      let activeDevice=state.user?.id;
+      const {data:{subscription}}=state.client.auth.onAuthStateChange((event,session)=>{
+       if(activeDevice===session?.user.id&&event!=='USER_UPDATED')return;
+       activeDevice=session?.user.id;
+       setTimeout(listener,0);
+      });
+      return ()=>subscription.unsubscribe();
+     },
+     signOut:async()=>{await state.client?.auth.signOut({scope:'local'});location.hash='dashboard';}
+    });
+    container.replaceChildren();
+   }).catch(()=>{
+    container.textContent='تعذّر فتح توزيع الجلسات. أعد تحميل الصفحة للمحاولة مجددًا.';
+   });
+  }
+ }else if(['dashboard','cases','tasks','poster'].includes(destination)){
+  navigate(destination);
+ }
+}
+const workspaceReady=init();
+window.addEventListener('hashchange',syncWorkspace);
+syncWorkspace();
