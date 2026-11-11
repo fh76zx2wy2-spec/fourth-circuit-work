@@ -31,12 +31,25 @@ async function sendTest(request: Request, client: ReturnType<typeof createClient
     return Response.json({ error: status === 429 ? 'rate_limit' : 'test_failed' }, { status, headers: cors });
   }
 
+  const { workerOnly } = await request.json().catch(() => ({}));
   const testId = crypto.randomUUID();
+  const testPayload = workerOnly === true ? { testId } : {
+    testId,
+    web_push: 8030,
+    notification: {
+      title: 'منظم أعمال الدائرة الرابعة',
+      body: 'إشعار تجريبي — إشعارات الدائرة الرابعة تعمل بنجاح',
+      lang: 'ar',
+      dir: 'rtl',
+      tag: 'push-test-' + testId,
+      navigate: site,
+    },
+  };
   const results = await Promise.all(data.jobs.map(async ({ device, subscription }, index) => {
     const row = { device, number: index + 1 };
     if (!data.vapid) return { ...row, ok: false, reason: 'إعداد Web Push غير متاح.' };
     try {
-      await webpush.sendNotification(subscription, JSON.stringify({ testId }), pushOptions(data.vapid, testId, 300));
+      await webpush.sendNotification(subscription, JSON.stringify(testPayload), pushOptions(data.vapid, testId, 300));
       return { ...row, ok: true };
     } catch (failure) {
       const status = failure?.statusCode;
@@ -46,7 +59,7 @@ async function sendTest(request: Request, client: ReturnType<typeof createClient
       return { ...row, ok: false, reason };
     }
   }));
-  return Response.json({ results }, { headers: cors });
+  return Response.json({ results, testId }, { headers: cors });
 }
 
 Deno.serve(async (request) => {

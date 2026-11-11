@@ -217,7 +217,7 @@ function registerPushWorker(){
   void navigator.serviceWorker.register('./case-push-sw.js').catch(()=>{});
  }
 }
-async function enableCasePush(){
+async function enableCasePush(renew=false){
  if(!isSubmissionRecipient())return;
  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){
   notify('لتفعيل الإشعارات على الآيفون، أضف الموقع إلى الشاشة الرئيسية وافتحه من أيقونته.','error');
@@ -231,12 +231,18 @@ async function enableCasePush(){
   }
   await navigator.serviceWorker.register('./case-push-sw.js');
   const registration=await navigator.serviceWorker.ready;
-  const subscription=await registration.pushManager.getSubscription()||
+  const existing=await registration.pushManager.getSubscription();
+  if(renew&&existing&&!(await existing.unsubscribe()))throw new Error('unsubscribe_failed');
+  const subscription=(!renew&&existing)||
    await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:casePushKey});
   if(actorId()!==actor)return;
   const {error}=await state.client.rpc('register_judge_push',{subscription:subscription.toJSON()});
   if(error)throw error;
+  if(renew&&existing&&existing.endpoint!==subscription.endpoint){
+   await state.client.rpc('unregister_judge_push',{destination:existing.endpoint});
+  }
   notify('فُعّلت إشعارات الإرسال على هذا الجهاز.','success');
+  if(renew)void inspectPushDevice();
  }catch{
   notify('تعذّر تفعيل إشعارات الإرسال على هذا الجهاز.','error');
  }
@@ -256,17 +262,82 @@ async function signOutDevice(){
  }
  await state.client?.auth.signOut();
 }
+let pushDiagnostics=null;
+
+function workerRevision(worker){
+ if(!worker)return Promise.resolve(null);
+ return new Promise(resolve=>{
+  const channel=new MessageChannel();
+  const finish=value=>{clearTimeout(timer);channel.port1.close();resolve(value);};
+  const timer=setTimeout(()=>finish(null),1500);
+  channel.port1.onmessage=event=>finish(event.data?.revision||null);
+  worker.postMessage('push-diagnostics',[channel.port2]);
+ });
+}
+
+async function inspectPushDevice(){
+ if(!isSubmissionRecipient())return;
+ const actor=actorId();
+ const lines=[];
+ try{
+  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  lines.push(standalone?'التشغيل: من أيقونة التطبيق.':'التشغيل: داخل المتصفح.');
+  lines.push('إذن الإشعارات: '+({granted:'مسموح',denied:'مرفوض',default:'بانتظار السماح'}[window.Notification?.permission]||'غير متاح'));
+  const registration=await navigator.serviceWorker?.getRegistration();
+  await registration?.update().catch(()=>{});
+  const revision=await workerRevision(registration?.active);
+  lines.push(revision?`Service Worker نشط — الإصدار ${revision}.`:registration?.active?'Service Worker نشط — لم يرد على فحص الإصدار.':'لا يوجد Service Worker نشط.');
+  const subscription=await registration?.pushManager?.getSubscription();
+  if(subscription){
+   const {data,error}=await state.client.rpc('check_judge_push_subscription',{browser_subscription:subscription.toJSON()});
+   lines.push(error?'اشتراك الجهاز موجود، وتعذّر التحقق منه على الخادم.':data?'اشتراك الجهاز مطابق للسجل على الخادم.':'اشتراك الجهاز غير مطابق للسجل على الخادم. اضغط تفعيل الإشعارات لمزامنته.');
+  }else lines.push('لا يوجد اشتراك Web Push لهذا الجهاز.');
+  const cache=await caches.open('fourth-circuit-push-diagnostics');
+  const lastTest=pushTestResult?.actor===actorId()?pushTestResult:null;
+  const match=lastTest?.workerOnly&&lastTest.testId
+   ?await cache.match(new URL('test-'+lastTest.testId+'.json',location.href))
+   :await cache.match(new URL('last-receipt.json',location.href));
+  if(!match)lines.push(lastTest?.workerOnly?'لم يسجّل Service Worker استلام هذا الاختبار بعد.':'لم يسجّل Service Worker أي استلام بعد.');
+  else {
+   const receipt=await match.json();
+   lines.push(`آخر استلام سجّله Service Worker: ${stamp(receipt.at)}${receipt.testId?' · اختبار '+receipt.testId.slice(0,8):''}.`);
+   lines.push(receipt.status==='shown'?'قبِل نظام الجهاز طلب عرض الإشعار.':`فشل طلب العرض (${receipt.error}).`);
+   if(receipt.payloadError)lines.push('تعذّرت قراءة بيانات الإشعار، فاستُخدمت رسالة عامة.');
+  }
+ }catch{
+  lines.push('لا توجد قراءة تشخيصية إضافية متاحة على هذا الجهاز.');
+ }
+ if(actorId()===actor){pushDiagnostics={actor,lines};render();}
+}
+
+async function testLocalPushDisplay(){
+ if(!isSubmissionRecipient())return;
+ try{
+  const registration=await navigator.serviceWorker?.getRegistration();
+  if(!registration?.active)throw new Error('Service Worker');
+  await registration.showNotification('منظم أعمال الدائرة الرابعة',{body:'اختبار العرض على هذا الجهاز'});
+  notify('قبِل النظام طلب العرض المحلي. تحقق من مركز الإشعارات.');
+ }catch(error){
+  notify('تعذّر العرض المحلي ('+error.name+').','error');
+ }
+}
+
 let pushTestRunning=false;
 let pushTestResult=null;
 
 function renderPushTest(){
  const result=pushTestResult?.actor===actorId()?pushTestResult:null;
- const rows=result?.devices?.map(row=>`<li>${esc(row.device)}${result.devices.filter(device=>device.device===row.device).length>1?` (${row.number})`:''} — ${row.ok?'نجح الإرسال':`فشل الإرسال — ${esc(row.reason)}`}</li>`).join('');
+ const rows=result?.devices?.map(row=>`<li>${esc(row.device)}${result.devices.filter(device=>device.device===row.device).length>1?` (${row.number})`:''} — ${row.ok?'قبلت خدمة الدفع الطلب، والاستلام غير مؤكد':`فشل الإرسال — ${esc(row.reason)}`}</li>`).join('');
  return `<button type="button" class="btn btn-soft" data-action="test-case-push" ${pushTestRunning?'disabled':''}>إرسال إشعار تجريبي</button>
-  <div role="status" class="hint">${pushTestRunning?'جارٍ إرسال الإشعار…':rows?`<ul>${rows}</ul>`:esc(result?.message||'')}</div>`;
+<div role="status" class="hint">${pushTestRunning?'جارٍ إرسال الإشعار…':rows?`<ul>${rows}</ul>${result.testId?`رمز الاختبار: ${esc(result.testId.slice(0,8))}`:''}`:esc(result?.message||'')}</div>
+<button type="button" class="btn btn-small" data-action="inspect-push">فحص إشعارات هذا الجهاز</button>
+${pushDiagnostics?.actor===actorId()?`<ul class="hint">${pushDiagnostics.lines.map(line=>`<li>${esc(line)}</li>`).join('')}</ul>
+ <button type="button" class="btn btn-small" data-action="local-push-display">اختبار العرض على هذا الجهاز</button>
+ <button type="button" class="btn btn-small" data-action="test-push-worker" ${pushTestRunning?'disabled':''}>اختبار الاستلام عبر Service Worker</button>
+ <button type="button" class="btn btn-small" data-action="renew-case-push">تجديد اشتراك هذا الجهاز</button>`:''}`;
 }
 
-async function testCasePush(){
+async function testCasePush(workerOnly=false){
  if(!isSubmissionRecipient()||pushTestRunning)return;
  const actor=actorId();
  pushTestRunning=true;
@@ -275,9 +346,9 @@ async function testCasePush(){
  try{
   const registration=await navigator.serviceWorker?.getRegistration();
   await registration?.update().catch(()=>{});
-  const {data,error}=await state.client.functions.invoke('case-submission-push',{body:{test:true}});
+  const {data,error}=await state.client.functions.invoke('case-submission-push',{body:{test:true,workerOnly}});
   if(error)throw error;
-  if(actorId()===actor)pushTestResult={actor,devices:data.results,message:'لا توجد أجهزة مسجلة لإشعارات Web Push.'};
+  if(actorId()===actor)pushTestResult={actor,devices:data.results,testId:data.testId,workerOnly,message:'لا توجد أجهزة مسجلة لإشعارات Web Push.'};
  }catch(error){
   if(actorId()===actor)pushTestResult={actor,message:error.context?.status===429?'انتظر 15 ثانية بين كل اختبار وآخر.':'تعذّر إجراء اختبار الإشعارات.'};
  }finally{
@@ -1046,7 +1117,7 @@ for(let i=0;i<cases.length;i++){let c=cases[i],heightBox=sizes[i];if(y+heightBox
 ctx.fillStyle='#81766e';ctx.textAlign='center';ctx.font='21px "Thmanyah Sans", Tahoma, Arial, sans-serif';ctx.fillText((isReportApproved()?'تقرير معتمد • ':'تقرير غير معتمد • ')+'أعده: '+short(state.profile?.display_name||'',24)+' • مستخرج نصي أولي من الضبط',w/2,Math.min(y+29,totalHeight-45));return canvas;}
 async function sharePng(){const cases=listForDate().filter(x=>!state.posterApprovedOnly||x.status==='approved');if(!cases.length)return;try{const canvas=buildPosterCanvas(cases);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob)throw Error('تعذّر إنشاء الصورة');const file=new File([blob],`تقرير-القضايا-${state.filterDate}.png`,{type:'image/png'});if(navigator.share && navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:'تقرير تنظيم أعمال الدائرة الرابعة'});}else{notify('المشاركة المباشرة غير متاحة في هذا المتصفح؛ استخدم حفظ الصورة ثم أرسلها.');exportPng();}}catch(e){if(e.name!=='AbortError')notify('تعذرت مشاركة الصورة: '+e.message,'error');}}
 function exportPng(){const cases=listForDate().filter(x=>!state.posterApprovedOnly||x.status==='approved');if(!cases.length)return notify('لا توجد قضايا لتصديرها.','error');try{const canvas=buildPosterCanvas(cases);canvas.toBlob(blob=>{if(!blob)return notify('لم يتمكن المتصفح من إنشاء الصورة.','error');const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`تقرير-القضايا-${state.filterDate}.png`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),12000);notify('تم تجهيز صورة التقرير للحفظ.','success');},'image/png');}catch(e){notify('تعذر حفظ الصورة: '+e.message,'error');}}
-document.addEventListener('click',async e=>{const target=e.target.closest('[data-open-task],[data-open-submission],[data-nav],[data-action],[data-edit],[data-detail],[data-approve],[data-save],[data-stage],[data-person],[data-task-toggle],[data-task-edit],[data-task-filter],[data-day-tab]');if(!target)return;if(target.dataset.openTask){void openTaskNotification(target.dataset.openTask);return;}if(target.dataset.openSubmission){void openSubmission(target.dataset.openSubmission);return;}if(target.dataset.dayTab){if(dayWithinWindow(target.dataset.dayTab)){state.filterDate=target.dataset.dayTab;render();}return;}if(target.dataset.person){const choice=STAFF.find(x=>x.id===target.dataset.person);if(DEMO){state.profile=choice;localStorage.setItem('fourth-circuit-demo-profile',choice.id);notify(`مرحبًا ${choice.display_name}`,'success');render();}else{await joinDevice(choice);}return;}if(target.dataset.taskToggle){await toggleTask(target.dataset.taskToggle);return;}if(target.dataset.taskEdit){openTaskEditor(target.dataset.taskEdit);return;}if(target.dataset.taskFilter){state.taskFilter=target.dataset.taskFilter;render();return;}if(target.dataset.nav){navigate(target.dataset.nav);return;}if(target.dataset.edit){openEditor(target.dataset.edit);return;}if(target.dataset.detail){void openCaseDetail(target.dataset.detail);return;}if(target.dataset.approve){await approveCase(target.dataset.approve);return;}if(target.dataset.save){await saveCase(target.dataset.save);return;}if(target.dataset.stage){state.stageFilter=target.dataset.stage;render();return;}const action=target.dataset.action;if(!action)return;switch(action){case 'new-case':openEditor();break;case 'case-entry-mode':switchCaseEntry(target.dataset.entryMode);break;case 'close-bulk':case 'discard-bulk':case 'add-bulk-row':case 'bulk-details':case 'remove-bulk-row':bulkAction(action,target);break;case 'discard-case-draft':discardSingleDraft();break;case 'new-task':openTaskEditor();break;case 'close-task-editor':closeTaskEditor();break;case 'delete-task':await deleteTask();break;case 'approve-report':await approveReport();break;case 'export-tasks':exportTasksPng();break;case 'reload-preparation':void openCaseDetail(state.detailId);break;case 'close-editor':case 'close-detail':if(!caseSaving)closeModal();break;case 'toggle-source':state.showSource=!state.showSource;render();break;case 'next-day':state.filterDate=nextWorkday();render();break;case 'approve-from-editor':await saveCase('approved');break;case 'delete-case':await softDeleteCase();break;case 'toggle-notifs':state.showNotifs=!state.showNotifs;render();break;case 'mark-read':await markRead();break;case 'test-case-push':await testCasePush();break;case 'enable-case-push':await enableCasePush();break;case 'submit-cases':await submitCases();break;case 'enable-notifs':await enableNotifications();break;case 'refresh':await loadAll();notify('تم تحديث البيانات من القاعدة.','success');break;case 'refresh-profile':await refreshProfile();break;case 'logout':if(DEMO){resetCaseEntry();state.profile=null;localStorage.removeItem('fourth-circuit-demo-profile');render();}else await signOutDevice();break;case 'toggle-auth':state.authMode=state.authMode==='login'?'signup':'login';render();break;case 'export-png':exportPng();break;case 'share-png':await sharePng();break;}});
+document.addEventListener('click',async e=>{const target=e.target.closest('[data-open-task],[data-open-submission],[data-nav],[data-action],[data-edit],[data-detail],[data-approve],[data-save],[data-stage],[data-person],[data-task-toggle],[data-task-edit],[data-task-filter],[data-day-tab]');if(!target)return;if(target.dataset.openTask){void openTaskNotification(target.dataset.openTask);return;}if(target.dataset.openSubmission){void openSubmission(target.dataset.openSubmission);return;}if(target.dataset.dayTab){if(dayWithinWindow(target.dataset.dayTab)){state.filterDate=target.dataset.dayTab;render();}return;}if(target.dataset.person){const choice=STAFF.find(x=>x.id===target.dataset.person);if(DEMO){state.profile=choice;localStorage.setItem('fourth-circuit-demo-profile',choice.id);notify(`مرحبًا ${choice.display_name}`,'success');render();}else{await joinDevice(choice);}return;}if(target.dataset.taskToggle){await toggleTask(target.dataset.taskToggle);return;}if(target.dataset.taskEdit){openTaskEditor(target.dataset.taskEdit);return;}if(target.dataset.taskFilter){state.taskFilter=target.dataset.taskFilter;render();return;}if(target.dataset.nav){navigate(target.dataset.nav);return;}if(target.dataset.edit){openEditor(target.dataset.edit);return;}if(target.dataset.detail){void openCaseDetail(target.dataset.detail);return;}if(target.dataset.approve){await approveCase(target.dataset.approve);return;}if(target.dataset.save){await saveCase(target.dataset.save);return;}if(target.dataset.stage){state.stageFilter=target.dataset.stage;render();return;}const action=target.dataset.action;if(!action)return;switch(action){case 'new-case':openEditor();break;case 'case-entry-mode':switchCaseEntry(target.dataset.entryMode);break;case 'close-bulk':case 'discard-bulk':case 'add-bulk-row':case 'bulk-details':case 'remove-bulk-row':bulkAction(action,target);break;case 'discard-case-draft':discardSingleDraft();break;case 'new-task':openTaskEditor();break;case 'close-task-editor':closeTaskEditor();break;case 'delete-task':await deleteTask();break;case 'approve-report':await approveReport();break;case 'export-tasks':exportTasksPng();break;case 'reload-preparation':void openCaseDetail(state.detailId);break;case 'close-editor':case 'close-detail':if(!caseSaving)closeModal();break;case 'toggle-source':state.showSource=!state.showSource;render();break;case 'next-day':state.filterDate=nextWorkday();render();break;case 'approve-from-editor':await saveCase('approved');break;case 'delete-case':await softDeleteCase();break;case 'toggle-notifs':state.showNotifs=!state.showNotifs;render();break;case 'mark-read':await markRead();break;case 'inspect-push':await inspectPushDevice();break;case 'local-push-display':await testLocalPushDisplay();break;case 'test-push-worker':await testCasePush(true);break;case 'renew-case-push':await enableCasePush(true);break;case 'test-case-push':await testCasePush();break;case 'enable-case-push':await enableCasePush();break;case 'submit-cases':await submitCases();break;case 'enable-notifs':await enableNotifications();break;case 'refresh':await loadAll();notify('تم تحديث البيانات من القاعدة.','success');break;case 'refresh-profile':await refreshProfile();break;case 'logout':if(DEMO){resetCaseEntry();state.profile=null;localStorage.removeItem('fourth-circuit-demo-profile');render();}else await signOutDevice();break;case 'toggle-auth':state.authMode=state.authMode==='login'?'signup':'login';render();break;case 'export-png':exportPng();break;case 'share-png':await sharePng();break;}});
 document.addEventListener('input',e=>{if(e.target.matches('#judge-preparation [name]')){updatePreparationField(e.target);return;}if(e.target.dataset.formField&&e.target.dataset.formField!=='stage'){const row=bulkRowFor(e.target);if(row||state.form){(row||state.form)[e.target.dataset.formField]=e.target.value;rememberCaseEntry();markCaseError(e.target.closest('[data-case-control]'),'');}}if(e.target.dataset.taskField&&state.taskForm){state.taskForm[e.target.dataset.taskField]=e.target.value;}if(e.target.matches('[data-task-search]')){state.taskSearch=e.target.value;const list=$('.tasks-list');if(list){const temp=state.taskSearch;state.taskSearch=temp;list.innerHTML=state.tasks.filter(t=>!t.deleted_at&&(state.taskFilter==='all'||t.status===state.taskFilter)&&[t.title,t.details,t.case_number,profileName(t.created_by)].join(' ').includes(temp)).map(task=>taskRow(task)).join('')||'<div class="card empty">لا توجد نتائج</div>';}}if(e.target.matches('[data-search]')){state.search=e.target.value;const list=$('.cases-list');if(list)list.innerHTML=filteredCases().length?filteredCases().map(caseRow).join(''):emptyState();}});
 document.addEventListener('change',e=>{
  if(e.target.matches('[data-case-time-part]')){updateCaseTime(e.target);return;}
