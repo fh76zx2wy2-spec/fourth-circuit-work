@@ -56,7 +56,7 @@ function hijriPicker(field,iso,label,{past=10,future=3,minYear,numberedMonths=fa
   const days=Array.from({length:30},(_,i)=>[i+1,String(i+1)]),months=HIJRI_MONTHS.map((v,i)=>[i+1,numberedMonths?`${i+1} - ${v}`:v]);
   const yearValues=minYear===undefined
     ?Array.from({length:past+future+1},(_,i)=>year+future-i)
-    :Array.from({length:year+future-minYear+1},(_,i)=>minYear+i);
+    :Array.from({length:year+future-minYear+1},(_,i)=>year+future-i);
   const years=yearValues.map(v=>[v,String(v)+' هـ']);
   return `<div class="form-group hijri-field ${mandatory?'mandatory':''}"><label class="form-label">${label}${mandatory?CASE_STAR:''}</label><div class="hijri-parts" role="group" aria-label="${label}">${picker('day',days,'اليوم')}${picker('month',months,'الشهر')}${picker('year',years,'السنة')}</div><small class="hijri-help">التاريخ الهجري وفق تقويم أم القرى${!mandatory?' — اتركه فارغًا إذا لم يوجد':''}</small></div>`;
 }
