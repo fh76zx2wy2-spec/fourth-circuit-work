@@ -13,14 +13,16 @@ Deno.serve(async (request) => {
   if (!data.jobs.length) return new Response(null, { status: 204 });
   if (!data.vapid) return new Response(null, { status: 503 });
 
-  await Promise.all(data.jobs.map(async ({ id, attempt, subscription }) => {
+  await Promise.all(data.jobs.map(async ({ deliveryId, id, taskId, sender, attempt, subscription }) => {
     let result = 'sent';
     try {
-      await webpush.sendNotification(subscription, JSON.stringify({ id }), {
+      const payload = taskId ? { taskId, sender } : { id };
+      const eventId = taskId || id;
+      await webpush.sendNotification(subscription, JSON.stringify(payload), {
         TTL: 3600,
         timeout: 10000,
         urgency: 'high',
-        topic: id.replaceAll('-', ''),
+        topic: eventId.replaceAll('-', ''),
         vapidDetails: {
           subject: 'https://fh76zx2wy2-spec.github.io/fourth-circuit-work/',
           publicKey: data.vapid.publicKey,
@@ -32,7 +34,7 @@ Deno.serve(async (request) => {
       result = 'expired';
     }
     await client.rpc('finish_case_push', {
-      batch: id, destination: subscription.endpoint, attempt, result,
+      batch: deliveryId || id, destination: subscription.endpoint, attempt, result,
     });
   }));
   return new Response(null, { status: 204 });
