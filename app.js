@@ -49,13 +49,13 @@ function fromHijri(year,month,day){
   }
   return null;
 }
-function hijriPicker(field,iso,label,{past=10,future=3,mandatory=false}={}){
-  const parts=hijriParts(iso),year=hijriParts(todayRiyadh()).year;
+function hijriPicker(field,iso,label,{past=10,future=3,mandatory=false,parts:chosenParts}={}){
+  const parts=chosenParts||hijriParts(iso),year=hijriParts(todayRiyadh()).year;
   const attrs=`data-hijri-field="${field}"`;
-  const picker=(part,items,placeholder)=>`<select class="input hijri-date-part" ${attrs} data-hijri-part="${part}" aria-label="${label} - ${placeholder}"><option value="">${placeholder}</option>${items.map(([v,l])=>`<option value="${v}" ${parts?.[part]===v?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
+  const picker=(part,items,placeholder)=>`<select class="input hijri-date-part" ${attrs} data-hijri-part="${part}" aria-label="${label} - ${placeholder}" ${mandatory?'required':''}><option value="">${placeholder}</option>${items.map(([v,l])=>`<option value="${v}" ${parts?.[part]===v?'selected':''}>${esc(l)}</option>`).join('')}</select>`;
   const days=Array.from({length:30},(_,i)=>[i+1,String(i+1)]),months=HIJRI_MONTHS.map((v,i)=>[i+1,v]);
   const years=Array.from({length:past+future+1},(_,i)=>year+future-i).map(v=>[v,String(v)+' هـ']);
-  return `<div class="form-group hijri-field ${mandatory?'mandatory':''}"><label class="form-label">${label}${mandatory?' *':''}</label><div class="hijri-parts" role="group" aria-label="${label}">${picker('day',days,'اليوم')}${picker('month',months,'الشهر')}${picker('year',years,'السنة')}</div><small class="hijri-help">التاريخ الهجري وفق تقويم أم القرى${!mandatory?' — اتركه فارغًا إذا لم يوجد':''}</small></div>`;
+  return `<div class="form-group hijri-field ${mandatory?'mandatory':''}"><label class="form-label">${label}${mandatory?CASE_STAR:''}</label><div class="hijri-parts" role="group" aria-label="${label}">${picker('day',days,'اليوم')}${picker('month',months,'الشهر')}${picker('year',years,'السنة')}</div><small class="hijri-help">التاريخ الهجري وفق تقويم أم القرى${!mandatory?' — اتركه فارغًا إذا لم يوجد':''}</small></div>`;
 }
 function readHijriPicker(field,required=false){
  const arr=[...document.querySelectorAll(`[data-hijri-field="${field}"]`)];if(!arr.length)return {ok:true,value:''};
@@ -122,7 +122,7 @@ function shell(){
   <div class="content"><nav class="service-tiles" aria-label="أقسام الدائرة">
    ${nav.map(([key,label,icon])=>`<button class="service-tile ${currentSection===key?'active':''}" data-nav="${key}"${navCurrent(key)}><span class="tile-symbol" aria-hidden="true">${icon}</span><span>${label}</span></button>`).join('')}
   </nav>${DEMO?`<div class="banner"><strong>واجهة تجريبية فارغة — الحفظ محلي حاليًا</strong>لا يوجد اتصال بقاعدة بيانات مشتركة بعد؛ ما يُحفظ هنا يبقى على هذا الجهاز فقط. يرجى عدم إدخال محاضر أو بيانات قضايا حقيقية حتى اكتمال الربط الآمن.</div>`:''}
-  ${state.screen==='dashboard'?dashboard():state.screen==='tasks'?tasksPage():state.screen==='hearings'?'<div id="hearings-slot"></div>':sessionsPage()}</div></main></div>${state.editorId!==null?editorModal():''}${state.detailId!==null?detailModal():''}${state.taskEditorId!==null?taskEditor():''}`;
+  ${state.screen==='dashboard'?dashboard():state.screen==='tasks'?tasksPage():state.screen==='hearings'?'<div id="hearings-slot"></div>':sessionsPage()}</div></main></div>${state.editorId!==null?editorModal():''}${state.detailId!==null?detailModal():''}${state.taskEditorId!==null?taskEditor():''}${bulkEntry?bulkEditor():''}`;
 }
 function renderNotifPopup(){return `<div class="notif-pop"><div class="status-line"><h3>التنبيهات</h3><button class="btn btn-small" data-action="mark-read">تحديد الكل كمقروء</button></div>${state.notifications.length?`<div class="notice-list">${state.notifications.slice(0,15).map(n=>`<div class="notice-item ${!n.read_at?'unread':''}">${esc(n.message)}<small>${stamp(n.created_at)}</small></div>`).join('')}</div>`:'<div class="empty" style="padding:20px">لا توجد تنبيهات بعد</div>'}<button class="text-button" data-action="enable-notifs">تفعيل تنبيه المتصفح أثناء فتح الموقع</button></div>`;}
 function stat(label,value,note,icon){return `<div class="stat"><span class="stat-icon">${icon}</span><div class="stat-label">${label}</div><div class="stat-number">${value}</div><div class="stat-note">${note}</div></div>`;}
@@ -132,7 +132,7 @@ function dashboard(){
  const urgent=pending.filter(t=>t.priority==='urgent');
  return `<div class="welcome-banner"><div><span class="hero-kicker">لوحة تنظيم العمل</span><h1>كل أعمال الدائرة في مكان واحد</h1><p>قضايا الجلسات، ومحاضرها، والمهام الواردة من الكتّاب وأمناء السر؛ تُراجع وتُنجز من لوحة واحدة.</p><div class="hero-date">◷ ${hijriLong(state.filterDate)}</div></div><div class="hero-deco" aria-hidden="true"><span></span><span></span><span></span><span></span></div></div>
  <div class="stats">${stat('قضايا اليوم المحدد',all.length,'بحسب جدول الجلسات','▤')}${stat('قضايا معتمدة',approved,'راجعتها الدائرة','✓')}${stat('بانتظار الاعتماد',ready,'تحتاج مراجعة','◷')}${stat('مهام قيد الإنجاز',pending.length,urgent.length+' منها عاجلة','☷')}</div>
- <div class="dashboard-columns"><section class="dashboard-main"><div class="section-head"><div><span class="section-eyebrow">جلسات الدائرة</span><h2>قضايا اليوم المختار</h2></div><div class="section-actions"><span class="date-heading">اليوم الهجري:</span>${workdaySelect(state.filterDate,'data-filter-date','تصفية القضايا حسب يوم العمل')}<button class="btn btn-primary" data-action="new-case">＋ إضافة قضية</button></div></div>
+ <div class="dashboard-columns"><section class="dashboard-main"><div class="section-head"><div><span class="section-eyebrow">جلسات الدائرة</span><h2>قضايا اليوم المختار</h2></div><div class="section-actions"><span class="date-heading">اليوم الهجري:</span>${workdaySelect(state.filterDate,'data-filter-date','تصفية القضايا حسب يوم العمل')}<div class="case-entry-actions"><button class="btn btn-primary" data-action="new-case">＋ إضافة قضية</button><button class="btn btn-soft" data-action="new-bulk">＋ إضافة عدة قضايا</button></div></div></div>
  ${dayTabs()}<div class="cases-list">${all.length?all.map(caseRow).join(''):emptyState()}</div><div class="compact-actions"><button class="btn btn-soft" data-nav="cases">عرض جميع القضايا ←</button><button class="btn btn-soft" data-nav="poster">حفظ تقرير الجلسات كصورة ↓</button></div></section>
  <aside class="dashboard-side"><div class="card aside-card"><div class="side-card-title"><div><span class="section-eyebrow">مهام ومتابعة</span><h3>المطلوب إنجازه</h3></div><button class="tiny-plus" data-action="new-task" title="إضافة مهمة">＋</button></div>${pending.length?pending.slice(0,5).map(taskCardMini).join(''):'<div class="mini-empty">لا توجد مهام معلّقة حاليًا.</div>'}<button class="text-button side-more" data-nav="tasks">فتح قائمة المتابعة ←</button></div>
  <div class="card aside-card"><div class="side-card-title"><h3>آخر الإضافات والتحديثات</h3></div>${state.notifications.length?`<div class="notice-list">${state.notifications.slice(0,4).map(n=>`<div class="notice-item">${esc(n.message)}<small>${stamp(n.created_at)}</small></div>`).join('')}</div>`:'<p class="hint">تظهر هنا إشعارات من أضاف قضية أو مهمة أو أنجزها.</p>'}</div></aside></div><p class="footer-note">التقرير يستند إلى ما أدخله أمناء السر من تقاضي؛ والمقتطف آلي أولي، ولا يغني عن الضبط الأصلي.</p>`;
@@ -146,17 +146,350 @@ function sessionsPage(){
   <button type="button" data-nav="poster" class="${report?'active':''}" aria-pressed="${report}">تصميم التقرير</button>
  </div>${report?posterPage():casesPage()}`;
 }
-function casesPage(){return `<div class="eyebrow">السجل المشترك للقضايا</div><h1 class="heading">جدول القضايا والجلسات</h1><p class="subheading">إضافة وتعديل وحفظ بيانات الجلسات مع الاحتفاظ بسجل التعديلات.</p><div class="filters">${workdaySelect(state.filterDate,'data-filter-date','تصفية القضايا حسب يوم العمل')}<input type="search" class="search" data-search placeholder="ابحث برقم القضية أو بأحد أطرافها..." value="${esc(state.search)}"/><div class="seg">${[['all','الكل'],['draft','مسودة'],['ready','قيد المراجعة'],['approved','معتمدة']].map(([v,t])=>`<button data-stage="${v}" class="${state.stageFilter===v?'active':''}">${t}</button>`).join('')}</div><button class="btn btn-primary" data-action="new-case">＋ قضية جديدة</button></div>${dayTabs()}<div class="cases-list">${filteredCases().length?filteredCases().map(caseRow).join(''):emptyState()}</div>`;}
+function casesPage(){return `<div class="eyebrow">السجل المشترك للقضايا</div><h1 class="heading">جدول القضايا والجلسات</h1><p class="subheading">إضافة وتعديل وحفظ بيانات الجلسات مع الاحتفاظ بسجل التعديلات.</p><div class="filters">${workdaySelect(state.filterDate,'data-filter-date','تصفية القضايا حسب يوم العمل')}<input type="search" class="search" data-search placeholder="ابحث برقم القضية أو بأحد أطرافها..." value="${esc(state.search)}"/><div class="seg">${[['all','الكل'],['draft','مسودة'],['ready','قيد المراجعة'],['approved','معتمدة']].map(([v,t])=>`<button data-stage="${v}" class="${state.stageFilter===v?'active':''}">${t}</button>`).join('')}</div><div class="case-entry-actions"><button class="btn btn-primary" data-action="new-case">＋ قضية جديدة</button><button class="btn btn-soft" data-action="new-bulk">＋ إضافة عدة قضايا</button></div></div>${dayTabs()}<div class="cases-list">${filteredCases().length?filteredCases().map(caseRow).join(''):emptyState()}</div>`;}
 function posterPage(){
  const cases=listForDate().filter(x=>!state.posterApprovedOnly||x.status==='approved');
  return `<div class="eyebrow">تقرير جاهز للمشاركة</div><h1 class="heading">تصميم تقرير الجلسات</h1><p class="subheading">اختر أحد أيام العمل الخمسة، وصدّر تقرير ذلك اليوم كصورة.</p><div class="poster-controls">${workdaySelect(state.filterDate,'data-filter-date','اختيار يوم التقرير')}<label class="pill"><input type="checkbox" data-approved-only ${state.posterApprovedOnly?'checked':''} /> المعتمدة فقط</label>${isJudge()?`<button class="btn btn-accent" data-action="approve-report" ${!cases.length||listForDate().some(c=>c.status!=='approved')?'disabled':''}>✓ ${isReportApproved()?'التقرير معتمد':'اعتماد التقرير'}</button>`:''}<button class="btn btn-primary" data-action="export-png" ${!cases.length?'disabled':''}>↓ حفظ التصميم كصورة PNG</button><button class="btn" data-action="share-png" ${!cases.length?'disabled':''}>↗ مشاركة الصورة</button></div><div class="report-status">${isReportApproved()?'✓ التقرير معتمد':'◇ التقرير بانتظار الاعتماد'} · ${esc(state.profile?.display_name||'')}</div><div class="poster-page"><div class="poster-head"><div><h2>تنظيم أعمال الدائرة الرابعة</h2><p>تقرير القضايا حسب يوم العمل</p></div><div style="font-size:31px;color:var(--brown)">▦</div></div><div class="poster-banner"><span>${hijriLong(state.filterDate)}</span><span>${cases.length} قضايا</span></div>${cases.length?cases.map((c,i)=>{const m=minutesExtract(c);return `<div class="poster-row"><div class="status-line"><h3>${i+1}. ${esc(c.case_type||'قضية')} — ${esc(tm(c.session_time))}</h3><span class="badge ${esc(c.status)}">${statusTitle(c.status)}</span></div><p class="poster-info">رقم القضية ${esc(c.case_number)} | ${stageTitle(c.stage)} | ${esc(short(c.plaintiffs,45))} × ${esc(short(c.defendants,45))} | أدخلها: ${esc(profileName(c.created_by))}</p><div class="poster-line"><strong>موضوع الدعوى:</strong> ${esc(c.claim_summary||'غير مدخل')}</div><div class="poster-line"><strong>مقتطف من الضبط السابق:</strong> ${esc(m.overview)}</div>${m.evidence?`<div class="poster-line"><strong>العبارة المتعلقة برفع الجلسة:</strong> ${esc(m.evidence)}</div>`:''}</div>`;}).join(''):'<p class="hint">لا توجد قضايا للعرض في اليوم المختار.</p>'}<div class="poster-footer">المقتطف مستخرج آليًا للمراجعة من النص الأصلي، ولا يغني عنه.</div></div><p class="footer-note">تحتوي الصورة على بيانات القضايا؛ لا تُشارك إلا بالطرق المصرح بها.</p>`;
 }
+const CASE_FIELDS = [
+ ['session_date','تاريخ الجلسة القادمة'],
+ ['case_number','رقم القضية'],
+ ['session_time','وقت الجلسة'],
+ ['plaintiffs','المدعي / المدعون'],
+ ['defendants','المدعى عليه / عليهم'],
+ ['case_type','نوع الدعوى'],
+ ['stage','مرحلة القضية'],
+ ['claim_summary','موضوع الدعوى'],
+ ['previous_date','تاريخ الجلسة السابقة'],
+ ['previous_minutes','ضبط الجلسة السابقة الأصلي'],
+];
+const CASE_LABELS=Object.fromEntries(CASE_FIELDS);
+const CASE_STAR='<span class="case-required" aria-hidden="true"> *</span>';
+const caseDrafts=new Map();
+let bulkEntry=null;
+let caseSaving=false;
+
+function draftKey(editor){
+ return 'fourth-circuit-case-entry-v1:'+actorId()+':'+editor;
+}
+function canStoreCaseDrafts(){
+ return DEMO||CONFIG.caseDraftStorageApproved===true;
+}
+function getCaseDraft(editor){
+ const key=draftKey(editor);
+ return caseDrafts.get(key)||(canStoreCaseDrafts()?safeStored(key):null);
+}
+function storeCaseDraft(editor,value){
+ const key=draftKey(editor);
+ if(value===null)caseDrafts.delete(key);
+ else caseDrafts.set(key,value);
+ if(!canStoreCaseDrafts())return;
+ try{
+  if(value===null)localStorage.removeItem(key);
+  else localStorage.setItem(key,JSON.stringify(value));
+ }catch{
+  if(!storeCaseDraft.warned){notify('تعذّر حفظ المسودة في المتصفح؛ ستبقى في الصفحة الحالية.','error');storeCaseDraft.warned=true;}
+ }
+}
+function resetCaseEntry(){
+ bulkEntry=null;
+ state.editorId=null;
+ state.form=null;
+}
+function rememberCaseEntry(){
+ if(bulkEntry)storeCaseDraft('bulk',bulkEntry);
+ else if(state.form)storeCaseDraft('single:'+state.editorId,state.form);
+}
+function draftHint(){
+ return canStoreCaseDrafts()
+  ?'تُحفظ المسودة على هذا المتصفح لحسابك حتى ينجح الحفظ أو تحذفها.'
+  :'تُحفظ المسودة أثناء فتح الصفحة فقط. التخزين بعد التحديث يتطلب اعتماد الجهة المختصة.';
+}
+function caseField(name,label,control,{wide=false}={}){
+ return `<div class="form-group case-field ${wide?'wide':''}" data-case-control="${name}">${label}${control}<small class="case-error" hidden></small></div>`;
+}
+function caseInput(form,name,id,type='text'){
+ return caseField(name,`<label class="form-label" for="${id}">${CASE_LABELS[name]}${CASE_STAR}</label>`,
+  `<input id="${id}" class="input" data-form-field="${name}" type="${type}" value="${esc(form[name]||'')}" required ${name==='case_number'?'maxlength="60"':''}>`);
+}
+function caseArea(form,name,id,rows){
+ return caseField(name,`<label class="form-label" for="${id}">${CASE_LABELS[name]}${CASE_STAR}</label>`,
+  `<textarea id="${id}" class="input" data-form-field="${name}" rows="${rows}" required>${esc(form[name]||'')}</textarea>`,{wide:true});
+}
+function caseStage(form,id){
+ return caseField('stage',`<label class="form-label" for="${id}">${CASE_LABELS.stage}${CASE_STAR}</label>`,
+  `<select id="${id}" class="input" data-form-field="stage" required><option value="first" ${form.stage==='first'?'selected':''}>جلسة تحضيرية (أولى)</option><option value="followup" ${form.stage==='followup'?'selected':''}>جلسة لاحقة</option></select>`);
+}
+function caseDate(form,id,options={}){
+ const label=options.label||CASE_LABELS.session_date;
+ const inherited=options.defaultDate;
+ const select=workdaySelect(form.session_date,`id="${id}" data-form-field="session_date"${inherited?'':' required'}`,label);
+ const placeholder=inherited?`<option value="" ${!form.session_date?'selected':''}>التاريخ المشترك</option>`:'';
+ const control=placeholder?select.replace('</select>',placeholder+'</select>'):select;
+ return caseField('session_date',`<label class="form-label" for="${id}">${label}${CASE_STAR}</label>`,control);
+}
+function casePreviousDate(form){
+ return caseField('previous_date','',hijriPicker('previous_date',form.previous_date,'تاريخ الجلسة السابقة (هجري)',{past:25,future:1,mandatory:true,parts:form.previous_parts}),{wide:true});
+}
+function caseDateResult(form){
+ if(form.previous_parts){
+  const {day,month,year}=form.previous_parts;
+  if(!day||!month||!year)return {error:'أكمل اليوم والشهر والسنة بالتاريخ الهجري.'};
+  const value=fromHijri(year,month,day);
+  return value?{value}:{error:'التاريخ الهجري غير صحيح.'};
+ }
+ return form.previous_date?{value:form.previous_date}:{error:'أدخل تاريخ الجلسة السابقة.'};
+}
+function caseErrors(form,id,{defaultDate,checkDuplicate=true,checkWindow=true}={}){
+ const errors={};
+ for(const name of ['case_number','session_time','plaintiffs','defendants','case_type','claim_summary']){
+  if(!String(form[name]??'').trim())errors[name]=`أدخل ${CASE_LABELS[name]}.`;
+ }
+ const caseNumber=String(form.case_number??'').trim();
+ if(caseNumber&&(caseNumber.length<2||caseNumber.length>60))errors.case_number='رقم القضية يجب أن يتكون من حرفين إلى 60 حرفًا.';
+ const date=form.session_date||defaultDate;
+ if(!date||(checkWindow&&!dayWithinWindow(date)))errors.session_date='اختر تاريخًا من أيام العمل الخمسة القادمة.';
+ if(!['first','followup'].includes(form.stage))errors.stage='اختر مرحلة القضية.';
+ if(form.stage==='followup'){
+  const previous=caseDateResult(form);
+  if(previous.error)errors.previous_date=previous.error;
+  if(!String(form.previous_minutes??'').trim())errors.previous_minutes='أدخل ضبط الجلسة السابقة كاملًا.';
+ }
+ if(checkDuplicate&&caseNumber&&state.cases.some(c=>c.id!==id&&c.case_number===caseNumber&&c.session_date===date)){
+  errors.case_number='رقم القضية مسجل في هذا التاريخ.';
+ }
+ return errors;
+}
+function markCaseError(group,message){
+ if(!group)return;
+ group.classList.toggle('case-invalid',Boolean(message));
+ const error=group.querySelector('.case-error');
+ if(error){
+  error.id||=(group.querySelector('[id]')?.id||'case-feedback-'+uid())+'-error';
+  error.hidden=!message;error.textContent=message||'';
+ }
+ for(const input of group.querySelectorAll('input,select,textarea')){
+  if(message){input.setAttribute('aria-invalid','true');if(error)input.setAttribute('aria-describedby',error.id);}
+  else{input.removeAttribute('aria-invalid');input.removeAttribute('aria-describedby');}
+ }
+}
+function showCaseErrors(container,errors){
+ let first=null;
+ for(const group of container.querySelectorAll('[data-case-control]')){
+  const message=errors[group.dataset.caseControl];
+  markCaseError(group,message);
+  if(message&&!first)first=group.querySelector('input,select,textarea');
+ }
+ return first;
+}
+function focusCaseField(field){
+ if(!field)return;
+ field.focus({preventScroll:true});
+ field.scrollIntoView({block:'center',inline:'nearest'});
+}
+function casePayload(form,defaultDate){
+ const payload=Object.fromEntries(CASE_FIELDS.map(([key])=>[key,typeof form[key]==='string'?form[key].trim():form[key]]));
+ payload.session_date=form.session_date||defaultDate;
+ payload.previous_date=form.stage==='followup'?caseDateResult(form).value:null;
+ payload.previous_minutes=form.stage==='followup'?form.previous_minutes.trim():'';
+ return payload;
+}
+function updateCaseDatePart(form,target){
+ form.previous_parts??=hijriParts(form.previous_date)||{};
+ form.previous_parts[target.dataset.hijriPart]=Number(target.value)||0;
+ rememberCaseEntry();
+ markCaseError(target.closest('[data-case-control]'),'');
+}
+function applyCaseStage(form,select){
+ if(select.value===form.stage)return false;
+ const hasPrevious=form.previous_date||form.previous_minutes||Object.values(form.previous_parts||{}).some(Boolean);
+ if(select.value==='first'&&hasPrevious&&!confirm('سيُمسح تاريخ الجلسة السابقة وضبطها من المسودة. هل تريد التحويل إلى جلسة أولى؟')){
+  select.value=form.stage;
+  return false;
+ }
+ clearPreviousSession(form);
+ form.previousSessionDiscarded=true;
+ form.stage=select.value;
+ rememberCaseEntry();
+ return true;
+}
+
+function newBulkRow(){
+ return {...initialForm(),id:crypto.randomUUID(),session_date:'',session_time:'',expanded:false,saved:false};
+}
+function openBulkEntry(){
+ if(caseSaving)return;
+ closeModal(false);
+ const saved=getCaseDraft('bulk');
+ bulkEntry=Array.isArray(saved?.rows)&&saved.rows.length&&saved.rows.every(row=>/^[0-9a-f-]{36}$/i.test(row.id))?saved:{date:state.filterDate,rows:[newBulkRow()]};
+ sortBulkRows();
+ if(!dayWithinWindow(bulkEntry.date))bulkEntry.date=state.filterDate;
+ render();
+}
+function sortBulkRows(){
+ bulkEntry.rows.sort((a,b)=>(a.session_time||'99:99').localeCompare(b.session_time||'99:99'));
+}
+function bulkEditor(){
+ const {date,rows}=bulkEntry;
+ return `<div class="modal-backdrop" id="bulk-backdrop"><div class="modal bulk-modal" role="dialog" aria-modal="true" aria-labelledby="bulk-title">
+  <div class="modal-head"><div><h2 id="bulk-title">إضافة عدة قضايا</h2><small>${draftHint()}</small></div><button class="icon-button" type="button" data-action="close-bulk" aria-label="إغلاق">✕</button></div>
+  <form id="bulk-case-form" novalidate><div class="modal-body">
+   <div class="bulk-date">${caseDate({session_date:date},'bulk-default-date',{label:'تاريخ الجلسات المشترك (هجري)'})}</div>
+   <p id="bulk-case-errors" class="case-error" role="alert" hidden></p>
+   <div class="bulk-head bulk-grid" aria-hidden="true">${['case_number','session_time','plaintiffs','defendants','case_type','stage'].map(name=>`<span>${CASE_LABELS[name]}${CASE_STAR}</span>`).join('')}<span>خيارات القضية</span></div>
+   <div id="bulk-case-rows">${rows.map(bulkRow).join('')}</div>
+   <button type="button" class="btn btn-soft" data-action="add-bulk-row">＋ إضافة قضية أخرى</button>
+  </div><div class="modal-foot"><button type="button" class="btn btn-danger" data-action="discard-bulk">حذف المسودة</button><button type="button" class="btn" data-action="close-bulk">إغلاق</button><button type="submit" class="btn btn-primary" ${caseSaving?'disabled':''}>${caseSaving?'جارٍ الحفظ…':'حفظ جميع القضايا'}</button></div></form>
+ </div></div>`;
+}
+function bulkRow(row,index){
+ const id=name=>`bulk-${row.id}-${name}`;
+ const rowLabel=`القضية ${index+1}`;
+ return `<article class="bulk-row" data-bulk-row="${row.id}">
+  <div class="bulk-row-label" data-bulk-index>${rowLabel}${row.saved?' · حُفظت':row.attempted?' · بانتظار تأكيد الحفظ':''}</div>
+  ${row.saved||row.attempted?`<p class="hint">${esc(row.case_number)} · ${esc(tm(row.session_time))}</p>`:`<div class="bulk-grid">
+   ${caseInput(row,'case_number',id('number'))}${caseInput(row,'session_time',id('time'),'time')}
+   ${caseInput(row,'plaintiffs',id('plaintiffs'))}${caseInput(row,'defendants',id('defendants'))}
+   ${caseInput(row,'case_type',id('type'))}${caseStage(row,id('stage'))}
+   <div class="bulk-row-actions"><button type="button" class="btn btn-small" data-action="bulk-details" aria-expanded="${row.expanded}">التفاصيل</button><button type="button" class="btn btn-small btn-danger" data-action="remove-bulk-row" aria-label="حذف ${rowLabel}">حذف</button></div>
+  </div>${row.expanded?`<div class="form-grid bulk-details">
+   ${caseDate(row,id('date'),{defaultDate:bulkEntry.date,label:'تاريخ هذه القضية (هجري)'})}
+   ${caseArea(row,'claim_summary',id('summary'),3)}
+   ${row.stage==='followup'?casePreviousDate(row)+caseArea(row,'previous_minutes',id('minutes'),7):''}
+  </div>`:''}`}
+ </article>`;
+}
+function bulkRowFor(element){
+ const id=element.closest('[data-bulk-row]')?.dataset.bulkRow;
+ return bulkEntry?.rows.find(row=>row.id===id);
+}
+function redrawBulkRows(){
+ const root=$('#bulk-case-rows');
+ if(root)root.innerHTML=bulkEntry.rows.map(bulkRow).join('');
+}
+function reorderBulkRows(){
+ if(!bulkEntry||caseSaving)return;
+ const root=$('#bulk-case-rows');
+ if(!root)return;
+ const before=bulkEntry.rows.map(row=>row.id).join();
+ sortBulkRows();
+ if(before===bulkEntry.rows.map(row=>row.id).join())return;
+ const focused=document.activeElement?.id;
+ redrawBulkRows();
+ document.getElementById(focused)?.focus({preventScroll:true});
+ rememberCaseEntry();
+}
+function bulkAction(action,target){
+ if(caseSaving)return;
+ const row=bulkRowFor(target);
+ if(action==='close-bulk'){rememberCaseEntry();bulkEntry=null;render();return;}
+ if(action==='discard-bulk'){
+  if(!confirm('حذف مسودة الإدخال المتعدد؟'))return;
+  storeCaseDraft('bulk',null);bulkEntry=null;render();return;
+ }
+ if(action==='add-bulk-row'){bulkEntry.rows.push(newBulkRow());}
+ if(action==='bulk-details'&&row){row.expanded=!row.expanded;}
+ if(action==='remove-bulk-row'&&row){
+  bulkEntry.rows=bulkEntry.rows.filter(item=>item!==row);
+  if(!bulkEntry.rows.length)bulkEntry.rows.push(newBulkRow());
+ }
+ rememberCaseEntry();
+ redrawBulkRows();
+ if(action==='add-bulk-row')focusCaseField($('#bulk-case-rows article:last-child [data-form-field="case_number"]'));
+}
+async function markSavedRows(entry,rows,author){
+ for(let i=0;i<rows.length;i+=50){
+  const chunk=rows.slice(i,i+50);
+  const {data,error}=await state.client.from('cases').select('id').in('id',chunk.map(row=>row.id)).eq('created_by',author);
+  if(error)throw error;
+  const saved=new Set(data.map(row=>row.id));
+  for(const row of chunk){row.saved=saved.has(row.id);row.attempted=false;}
+  if(bulkEntry===entry)rememberCaseEntry();
+ }
+}
+async function saveBulkEntry(){
+ if(caseSaving||!bulkEntry)return;
+ const entry=bulkEntry,author=actorId();
+ const form=$('#bulk-case-form');
+ caseSaving=true;
+ const submit=form.querySelector('button[type=submit]');
+ submit.disabled=true;
+ const summary=$('#bulk-case-errors');
+ summary.hidden=true;
+ form.inert=true;
+ try{
+  if(!DEMO&&entry.rows.some(row=>row.attempted&&!row.saved))await markSavedRows(entry,entry.rows.filter(row=>row.attempted&&!row.saved),author);
+  if(bulkEntry!==entry||actorId()!==author)return;
+  sortBulkRows();
+  const rows=entry.rows.filter(row=>!row.saved);
+  const errors=new Map();
+  const numbers=new Set();
+  const defaultError=dayWithinWindow(entry.date)?'':'اختر تاريخًا من أيام العمل الخمسة القادمة.';
+  for(const row of rows){
+   const rowErrors=caseErrors(row,row.id,{defaultDate:entry.date});
+   const key=JSON.stringify([String(row.case_number??'').trim(),row.session_date||entry.date]);
+   if(numbers.has(key))rowErrors.case_number='رقم القضية مكرر في القائمة لهذا التاريخ.';
+   numbers.add(key);
+   if(Object.keys(rowErrors).length){row.expanded=true;errors.set(row.id,rowErrors);}
+  }
+  redrawBulkRows();
+  const defaultField=$('.bulk-date [data-case-control]');
+  markCaseError(defaultField,defaultError);
+  for(const [id,rowErrors] of errors)showCaseErrors(form.querySelector(`[data-bulk-row="${id}"]`),rowErrors);
+  if(defaultError||errors.size){
+   summary.hidden=false;
+   summary.textContent=entry.rows.flatMap((row,index)=>errors.has(row.id)?[`الصف ${index+1}: ${Object.keys(errors.get(row.id)).map(key=>CASE_LABELS[key]).join('، ')}`]:[]).join(' | ')||defaultError;
+   form.inert=false;
+   focusCaseField(form.querySelector('[aria-invalid=true]'));
+   rememberCaseEntry();
+   return;
+  }
+  for(let offset=0;offset<rows.length;offset+=50){
+   if(bulkEntry!==entry||actorId()!==author)return;
+   const chunk=rows.slice(offset,offset+50);
+   const payloads=chunk.map(row=>({...casePayload(row,entry.date),id:row.id,created_by:author,updated_by:author,status:'ready'}));
+   for(const row of chunk)row.attempted=true;
+   rememberCaseEntry();
+   if(DEMO){
+    const stamp=new Date().toISOString();
+    state.cases.push(...payloads.filter(p=>!state.cases.some(c=>c.id===p.id)).map(p=>({...p,created_at:stamp,updated_at:stamp})));
+    for(const row of chunk)row.saved=true;
+    demoEvent(`حُفظت ${chunk.length} قضايا تجريبية.`);
+   }else{
+    const {error}=await state.client.from('cases').upsert(payloads,{onConflict:'id',ignoreDuplicates:true});
+    if(error){
+     if(/^(22|23|42)/.test(error.code||''))for(const row of chunk)row.attempted=false;
+     rememberCaseEntry();
+     throw error;
+    }
+    await markSavedRows(entry,chunk,author);
+    if(chunk.some(row=>!row.saved))throw new Error('لم يتأكد حفظ كل القضايا.');
+   }
+   if(bulkEntry===entry)rememberCaseEntry();
+  }
+  if(bulkEntry!==entry||actorId()!==author)return;
+  storeCaseDraft('bulk',null);
+  bulkEntry=null;
+  state.filterDate=entry.date;
+  render();
+  notify('تم حفظ جميع القضايا.','success');
+  await loadAll();
+ }catch(error){
+  if(bulkEntry!==entry||actorId()!==author)return;
+  redrawBulkRows();
+  summary.hidden=false;
+  summary.textContent='تعذّر إكمال الحفظ. بقيت المسودة ويمكنك إعادة المحاولة دون تكرار القضايا المحفوظة.';
+  if(error.code==='23505')summary.textContent+=' يوجد رقم قضية مسجل بالفعل في التاريخ نفسه.';
+ }finally{
+  caseSaving=false;
+  if(form.isConnected){form.inert=false;submit.disabled=false;}
+ }
+}
+
 function editorModal(){
  const f=state.form,id=state.editorId,canApprove=isJudge()&&id!=='new';
- const input=(name,label,type='text',required=false)=>`<div class="form-group"><label class="form-label" for="f_${name}">${label}</label><input class="input" id="f_${name}" name="${name}" data-form-field="${name}" type="${type}" value="${esc(f[name]||'')}" ${required?'required':''} /></div>`;
- const area=(name,label,rows=3,desc='')=>`<div class="form-group wide"><label class="form-label" for="f_${name}">${label}</label><textarea class="input" id="f_${name}" data-form-field="${name}" rows="${rows}" ${desc?'placeholder="'+esc(desc)+'"':''}>${esc(f[name]||'')}</textarea></div>`;
- const sessionSelect=`<div class="form-group"><label class="form-label">تاريخ الجلسة القادمة (هجري) *</label>${workdaySelect(f.session_date,'data-form-field="session_date" required','تاريخ الجلسة القادمة')}<small class="hijri-help">تظهر فقط أيام العمل الخمسة القادمة: الأحد إلى الخميس.</small></div>`;
- return `<div class="modal-backdrop" id="editor-backdrop"><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>${id==='new'?'إضافة قضية جديدة':'تعديل بيانات القضية'}</h2><small>تاريخ الجلسة بالهجري وفق أم القرى، ويمكن تعديل القضية لاحقًا.</small></div><button class="icon-button" data-action="close-editor">✕</button></div><form id="case-form"><div class="modal-body"><div class="form-grid">${input('case_number','رقم القضية','text',true)}${sessionSelect}${input('session_time','وقت الجلسة','time',true)}${input('plaintiffs','المدعي / المدعون','text',true)}${input('defendants','المدعى عليه / عليهم','text',true)}${input('case_type','نوع الدعوى','text',true)}<div class="form-group"><label class="form-label">مرحلة القضية</label><select class="input" data-form-field="stage"><option value="first" ${f.stage==='first'?'selected':''}>جلسة تحضيرية (أولى)</option><option value="followup" ${f.stage!=='first'?'selected':''}>جلسة لاحقة</option></select></div>${f.stage==='followup'?hijriPicker('previous_date',f.previous_date,'تاريخ الجلسة الأخيرة (هجري)',{past:25,future:1}):''}</div><div class="form-grid">${area('claim_summary','موضوع الدعوى',4)}</div>${f.stage==='followup'?`<div class="divider-label">الضبط الأصلي للجلسة السابقة</div><p class="hint">الصق ضبط الجلسة السابقة كاملًا كما هو في تقاضي، دون اختصار. يُعرض للقاضي مقتطف تحضيري تلقائيًا مع إمكانية فتح الأصل كاملًا.</p><div class="form-grid">${area('previous_minutes','نص الضبط كاملًا',12,'الصق ضبط الجلسة هنا كاملًا دون حذف أي جزء...')}</div>`:''}</div><div class="modal-foot">${id!=='new'?'<button type="button" class="btn btn-danger" data-action="delete-case">حذف من الجدول</button>':''}<button type="button" class="btn" data-action="close-editor">إلغاء</button><button type="button" class="btn btn-soft" data-save="draft">حفظ مسودة</button><button type="button" class="btn btn-primary" data-save="ready">حفظ وإرسال للمراجعة</button>${canApprove?'<button type="button" class="btn btn-primary" data-action="approve-from-editor">✓ حفظ واعتماد</button>':''}</div></form></div></div>`;
+ const sessionSelect=caseDate(f,'f_session_date',{label:'تاريخ الجلسة القادمة (هجري)'});
+ return `<div class="modal-backdrop" id="editor-backdrop"><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>${id==='new'?'إضافة قضية جديدة':'تعديل بيانات القضية'}</h2><small>${draftHint()}</small></div><button class="icon-button" data-action="close-editor">✕</button></div><form id="case-form" novalidate><div class="modal-body"><div class="form-grid">${caseInput(f,'case_number','f_case_number','text')}${sessionSelect}${caseInput(f,'session_time','f_session_time','time')}${caseInput(f,'plaintiffs','f_plaintiffs','text')}${caseInput(f,'defendants','f_defendants','text')}${caseInput(f,'case_type','f_case_type','text')}${caseStage(f,'f_stage')}${f.stage==='followup'?casePreviousDate(f):''}</div><div class="form-grid">${caseArea(f,'claim_summary','f_claim_summary',4)}</div>${f.stage==='followup'?`<div class="divider-label">الضبط الأصلي للجلسة السابقة</div><p class="hint">الصق ضبط الجلسة السابقة كاملًا كما هو في تقاضي، دون اختصار. يُعرض للقاضي مقتطف تحضيري تلقائيًا مع إمكانية فتح الأصل كاملًا.</p><div class="form-grid">${caseArea(f,'previous_minutes','f_previous_minutes',12)}</div>`:''}</div><div class="modal-foot">${id!=='new'?'<button type="button" class="btn btn-danger" data-action="delete-case">حذف من الجدول</button>':''}<button type="button" class="btn" data-action="close-editor">إلغاء</button><button type="button" class="btn btn-soft" data-save="draft">حفظ مسودة محليًا</button><button type="button" class="btn" data-action="discard-case-draft">حذف المسودة</button><button type="button" class="btn btn-primary" data-save="ready">حفظ وإرسال للمراجعة</button>${canApprove?'<button type="button" class="btn btn-primary" data-action="approve-from-editor">✓ حفظ واعتماد</button>':''}</div></form></div></div>`;
 }
 function detailModal(){
  const c=state.cases.find(x=>x.id===state.detailId);if(!c)return '';
@@ -209,61 +542,59 @@ function selectUserScreen(){return `<div class="choose-screen"><div class="choos
 function authScreen(){return `<div class="choose-screen"><div class="choose-header"><span class="choose-emblem">▦</span><span>${APP_NAME}</span></div><div class="choose-card auth-choice"><div class="eyebrow">الدخول باختيار الاسم</div><h1>اختر اسمك</h1><p>لا يلزم بريد إلكتروني أو كلمة مرور. عند أول استخدام على جهاز جديد، يلزم اعتماد الجهاز من مسؤول قاعدة البيانات للسماح بالاطلاع على القضايا.</p><div class="staff-grid">${STAFF.map(p=>`<button data-person="${esc(p.id)}" class="staff-choice"><span class="staff-avatar">${esc(p.display_name[0])}</span><span><b>${esc(p.display_name)}</b><small>${roleTitle(p.role)}</small></span><span class="staff-arrow">←</span></button>`).join('')}</div><div class="selector-notice">لكل جهاز اعتماد مرة واحدة لحماية البيانات؛ ويظل الدخول بعد ذلك بالاسم فقط. اختيار اسم غير صاحب الجهاز لا يمنحه صلاحياته.</div></div></div>`;}
 function pendingScreen(){return `<div class="auth-screen"><div class="auth-art"><h1>${APP_NAME}</h1><p>بيانات القضايا محمية بصلاحيات محددة.</p></div><div class="auth-form-wrap"><div class="auth-form"><div class="eyebrow">الحساب قيد المراجعة</div><h2>بانتظار اعتماد الجهاز</h2><p>تم إنشاء هوية مؤقتة لهذا الجهاز، ولم تُعتمد صلاحية الوصول بعد. يراجع المشرف طلب الجهاز ثم يربطه باسم صاحبه، دون بريد أو كلمة مرور.</p><p class="hint">معرّف الجهاز: ${esc(state.user?.id||"غير متاح")}</p><button class="btn" data-action="refresh-profile">التحقق مجددًا</button><button class="text-button" data-action="logout">تسجيل الخروج</button></div></div></div>`;}
 function clearPreviousSession(form){
+ delete form.previous_parts;
  form.previous_date=null;
  form.previous_minutes='';
 }
 function openEditor(id='new'){
+ if(caseSaving)return;
  state.detailId=null;
  state.showSource=false;
  state.editorId=id;
- state.form=id==='new'?initialForm():{...state.cases.find(x=>x.id===id)};
+ bulkEntry=null;
+ state.form=getCaseDraft('single:'+id)||(id==='new'?initialForm():{...state.cases.find(x=>x.id===id)});
  if(state.form.stage==='first')clearPreviousSession(state.form);
  render();
 }
 function changeCaseStage(select){
- const form=state.form;
- if(select.value===form.stage)return;
- const hasPreviousSession=form.previous_date||form.previous_minutes||
-  [...document.querySelectorAll('[data-hijri-field="previous_date"]')].some(part=>part.value);
- if(select.value==='first'&&hasPreviousSession&&
-  !window.confirm('سيُمسح تاريخ الجلسة السابقة وضبطها من النموذج. هل تريد التحويل إلى جلسة تحضيرية أولى؟')){
-  select.value=form.stage;
-  return;
- }
- clearPreviousSession(form);
- form.previousSessionDiscarded=true;
- form.stage=select.value;
+ const row=bulkRowFor(select);
+ const form=row||state.form;
+ if(!form||!applyCaseStage(form,select))return;
+ if(row)redrawBulkRows();else render();
+ document.getElementById(select.id)?.focus({preventScroll:true});
+}
+function closeModal(shouldRender=true){
+ rememberCaseEntry();
+ resetCaseEntry();
+ state.detailId=null;
+ state.showSource=false;
+ if(shouldRender)render();
+}
+function discardSingleDraft(){
+ if(!state.form||caseSaving||!confirm('حذف مسودة هذه القضية؟'))return;
+ storeCaseDraft('single:'+state.editorId,null);
+ resetCaseEntry();
  render();
 }
-function closeModal(){state.detailId=null;state.editorId=null;state.form=null;state.showSource=false;render();}
-function validateForm(){
- const f=state.form;
- if(!f.case_number?.trim()||!f.session_date||!f.session_time||!f.plaintiffs?.trim()||!f.defendants?.trim()||!f.case_type?.trim()){
-  notify('أكمل رقم القضية وموعدها وأطرافها ونوع الدعوى.','error');return false;
+async function saveCase(status='ready'){
+ if(caseSaving||!state.form)return;
+ if(status==='draft'){
+  closeModal();
+  notify(canStoreCaseDrafts()?'حُفظت المسودة في هذا المتصفح.':'حُفظت المسودة في الصفحة الحالية.','success');
+  return;
  }
- if(!dayWithinWindow(f.session_date)){
-  notify('تاريخ الجلسة يجب أن يكون من أيام العمل الخمسة القادمة فقط.','error');return false;
- }
- if(f.stage==='followup'){
-  const last=readHijriPicker('previous_date');
-  if(!last.ok){notify(last.message,'error');return false;}
-  f.previous_date=last.value;
- }else{
-  clearPreviousSession(f);
- }
- if(state.cases.some(c=>c.id!==state.editorId&&c.case_number===f.case_number.trim()&&c.session_date===f.session_date)){
-  notify('القضية مدخلة بالفعل في هذا التاريخ؛ افتحها للتعديل.','error');return false;
- }
- return true;
-}
-async function saveCase(status='ready'){if(!validateForm())return;const f={...state.form};const allowable=['case_number','session_date','session_time','plaintiffs','defendants','case_type','claim_summary','stage','previous_date','previous_minutes'];const payload=Object.fromEntries(allowable.map(k=>[k, typeof f[k]==='string'?f[k].trim():f[k]]));payload.previous_date=payload.previous_date||null;
+ const editorId=state.editorId;
+ const f=state.form,author=actorId(),editor=$('#case-form');
+ const first=showCaseErrors(editor,caseErrors(f,editorId));
+ if(first){focusCaseField(first);return;}
+ const payload=casePayload(f);
  const originalCase=state.cases.find(c=>c.id===state.editorId);
  if(originalCase&&(f.previousSessionDiscarded||f.stage==='first'||originalCase.stage==='first')){
   // Legacy summaries and evidence must not refer to a discarded session.
   Object.assign(payload,{last_session_summary:'',adjournment_reason:'',reason_evidence_quote:'',next_action:'',summary_warning:''});
  }
- payload.status=status==='approved'?'approved':status;payload.updated_by=actorId();if(status==='approved'){if(state.profile?.role!=='judge'){notify('الاعتماد متاح للقاضي فقط.','error');return;}if(payload.stage!=='first'&&!payload.previous_minutes){notify('لا يمكن اعتماد متابعة دون نص الضبط.','error');return;}}if(state.editorId==='new')payload.created_by=actorId();state.loading=true;try{if(DEMO){let isNew=state.editorId==='new';const old=state.cases.find(c=>c.id===state.editorId);const doc={...old,...payload,id:isNew?uid():state.editorId,created_at:old?.created_at||new Date().toISOString(),updated_at:new Date().toISOString(),created_by:old?.created_by||actorId()};if(old?.status==='approved'&&JSON.stringify(payload)!==JSON.stringify(Object.fromEntries(Object.keys(payload).map(k=>[k,old[k]])))&&status!=='approved')doc.status='ready';if(status==='approved')doc.approved_by=actorId();state.cases=isNew?[...state.cases,doc]:state.cases.map(x=>x.id===doc.id?doc:x);state.reportApprovals=state.reportApprovals.filter(r=>![doc.session_date,old?.session_date].includes(r.session_date));demoEvent(`${state.profile.display_name} ${isNew?'أضاف':'عدّل'} القضية ${doc.case_number}`);state.filterDate=doc.session_date;notify('تم الحفظ محليًا في هذه المعاينة.','success');closeModal();return;}let query=state.client.from('cases');let result=state.editorId==='new'?await query.insert(payload).select('id').single():await query.update(payload).eq('id',state.editorId).select('id').single();if(result.error)throw result.error;state.filterDate=payload.session_date;notify(status==='approved'?'حُفظت القضية واعتمدت.':'حُفظت القضية وظهرت في الحسابات المشتركة.','success');closeModal();await loadAll();}catch(err){notify('تعذّر الحفظ: '+err.message,'error');}finally{state.loading=false;}}
-async function approveCase(id){if(!isJudge())return;const c=state.cases.find(x=>x.id===id);if(!c)return;if(c.stage!=='first'&&!c.previous_minutes){notify('يجب حفظ الضبط الأصلي قبل الاعتماد.','error');return;}if(!window.confirm('هل راجعت بيانات القضية والضبط الأصلي قبل الاعتماد؟'))return;if(DEMO){c.status='approved';c.approved_by=actorId();c.updated_at=new Date().toISOString();state.reportApprovals=state.reportApprovals.filter(r=>r.session_date!==c.session_date);demoEvent(`${state.profile.display_name} اعتمد القضية ${c.case_number}`);closeModal();return;}const {error}=await state.client.from('cases').update({status:'approved',approved_by:state.user.id,updated_by:state.user.id}).eq('id',id);if(error)return notify('فشل الاعتماد: '+error.message,'error');notify('تم اعتماد بيانات القضية','success');closeModal();await loadAll();}
+ payload.status=status==='approved'?'approved':status;payload.updated_by=actorId();if(status==='approved'){if(state.profile?.role!=='judge'){notify('الاعتماد متاح للقاضي فقط.','error');return;}if(payload.stage!=='first'&&!payload.previous_minutes){notify('لا يمكن اعتماد متابعة دون نص الضبط.','error');return;}}if(editorId==='new')payload.created_by=author;caseSaving=true;editor.inert=true;state.loading=true;try{if(DEMO){let isNew=state.editorId==='new';const old=state.cases.find(c=>c.id===state.editorId);const doc={...old,...payload,id:isNew?uid():state.editorId,created_at:old?.created_at||new Date().toISOString(),updated_at:new Date().toISOString(),created_by:old?.created_by||actorId()};if(old?.status==='approved'&&JSON.stringify(payload)!==JSON.stringify(Object.fromEntries(Object.keys(payload).map(k=>[k,old[k]])))&&status!=='approved')doc.status='ready';if(status==='approved')doc.approved_by=actorId();state.cases=isNew?[...state.cases,doc]:state.cases.map(x=>x.id===doc.id?doc:x);state.reportApprovals=state.reportApprovals.filter(r=>![doc.session_date,old?.session_date].includes(r.session_date));demoEvent(`${state.profile.display_name} ${isNew?'أضاف':'عدّل'} القضية ${doc.case_number}`);state.filterDate=doc.session_date;notify('تم الحفظ محليًا في هذه المعاينة.','success');storeCaseDraft('single:'+editorId,null);resetCaseEntry();closeModal();return;}let query=state.client.from('cases');let result=state.editorId==='new'?await query.insert(payload).select('id').single():await query.update(payload).eq('id',state.editorId).select('id').single();if(result.error)throw result.error;if(actorId()!==author||state.form!==f)return;state.filterDate=payload.session_date;notify(status==='approved'?'حُفظت القضية واعتمدت.':'حُفظت القضية وظهرت في الحسابات المشتركة.','success');storeCaseDraft('single:'+editorId,null);resetCaseEntry();closeModal();await loadAll();}catch(err){notify('تعذّر الحفظ: '+err.message,'error');}finally{state.loading=false;caseSaving=false;if(editor.isConnected)editor.inert=false;}}
+async function approveCase(id){if(!isJudge())return;const c=state.cases.find(x=>x.id===id);if(!c)return;if(Object.keys(caseErrors(c,id,{checkDuplicate:false,checkWindow:false})).length){openEditor(id);focusCaseField(showCaseErrors($('#case-form'),caseErrors(state.form,id)));return;}if(!window.confirm('هل راجعت بيانات القضية والضبط الأصلي قبل الاعتماد؟'))return;if(DEMO){c.status='approved';c.approved_by=actorId();c.updated_at=new Date().toISOString();state.reportApprovals=state.reportApprovals.filter(r=>r.session_date!==c.session_date);demoEvent(`${state.profile.display_name} اعتمد القضية ${c.case_number}`);closeModal();return;}const {error}=await state.client.from('cases').update({status:'approved',approved_by:state.user.id,updated_by:state.user.id}).eq('id',id);if(error)return notify('فشل الاعتماد: '+error.message,'error');notify('تم اعتماد بيانات القضية','success');closeModal();await loadAll();}
 async function softDeleteCase(){const id=state.editorId;if(id==='new')return;if(!window.confirm('هل تريد إزالة هذه القضية من الجدول؟ ستبقى نسخة في سجل المراجعات.'))return;if(DEMO){const c=state.cases.find(x=>x.id===id);state.cases=state.cases.filter(x=>x.id!==id);state.reportApprovals=state.reportApprovals.filter(r=>r.session_date!==c?.session_date);demoEvent(`${state.profile.display_name} أزال القضية ${c?.case_number||''}`);notify('أُزيلت القضية من المعاينة.','success');closeModal();return;}const {error}=await state.client.from('cases').update({deleted_at:new Date().toISOString(),updated_by:state.user.id}).eq('id',id);if(error)return notify(error.message,'error');notify('أُزيلت القضية من العرض.','success');closeModal();await loadAll();}
 async function loadProfile(){const {data,error}=await state.client.from('profiles').select('*').eq('id',state.user.id).maybeSingle();if(error)throw error;state.profile=data||null;}
 let lastDataSnapshot = '';
@@ -290,7 +621,7 @@ async function loadAll({background=false}={}){if(DEMO){render();return;}if(!stat
   if(!state.initialNotifLoad){for(const x of next){if(!oldIds.has(x.id)&&!x.read_at&&'Notification' in window && Notification.permission==='granted'&&document.visibilityState==='hidden'){try{new Notification('تنظيم أعمال الدائرة الرابعة',{body:x.message,icon:'assets/favicon.svg'});}catch{}}}}
   state.notifications=next;state.initialNotifLoad=false;
  }
- if(!profiles.error)state.profiles=profiles.data||[];render();}
+ if(!profiles.error)state.profiles=profiles.data||[];if(!background||(!state.form&&!bulkEntry))render();}
 async function refreshProfile(){try{await loadProfile();render();if(state.profile?.is_active){await loadAll();subscribeChanges();}}catch(e){notify(e.message,'error');}}
 async function init(){if(DEMO){
   // إزالة جميع بيانات المعاينة القديمة مرة واحدة بعد الترقية.
@@ -302,7 +633,7 @@ async function init(){if(DEMO){
   if(d){state.cases=d.cases||[];state.tasks=d.tasks||[];state.notifications=d.notifications||[];state.reportApprovals=d.reportApprovals||[];}else persistDemo();
   const chosen=localStorage.getItem('fourth-circuit-demo-profile');
   state.profile=STAFF.find(p=>p.id===chosen)||null;render();return;}
-try{const mod=await import('https://esm.sh/@supabase/supabase-js@2.119.0?bundle');state.client=mod.createClient(CONFIG.supabaseUrl,CONFIG.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true}});const {data:{session},error}=await state.client.auth.getSession();if(error)throw error;state.user=session?.user||null;if(state.user){await loadProfile();if(state.profile?.is_active){await loadAll();subscribeChanges();}}state.client.auth.onAuthStateChange((_ev,session)=>{const old=state.user?.id;state.user=session?.user||null;if(state.user?.id!==old){if(state.sub){state.client.removeChannel(state.sub);state.sub=null;}state.profile=null;state.notifications=[];lastDataSnapshot='';state.initialNotifLoad=true;render();if(state.user){setTimeout(async()=>{await refreshProfile();if(state.profile?.is_active)subscribeChanges();},10);}}});render();}catch(e){app.innerHTML=`<div class="empty" style="min-height:90vh"><b>تعذّر تشغيل الموقع</b><p>${esc(e.message)}. تحقق من بيانات الاتصال بالقاعدة والاتصال بالإنترنت.</p></div>`;}}
+try{const mod=await import('https://esm.sh/@supabase/supabase-js@2.119.0?bundle');state.client=mod.createClient(CONFIG.supabaseUrl,CONFIG.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true}});const {data:{session},error}=await state.client.auth.getSession();if(error)throw error;state.user=session?.user||null;if(state.user){await loadProfile();if(state.profile?.is_active){await loadAll();subscribeChanges();}}state.client.auth.onAuthStateChange((_ev,session)=>{const old=state.user?.id;state.user=session?.user||null;if(state.user?.id!==old){resetCaseEntry();if(state.sub){state.client.removeChannel(state.sub);state.sub=null;}state.profile=null;state.notifications=[];lastDataSnapshot='';state.initialNotifLoad=true;render();if(state.user){setTimeout(async()=>{await refreshProfile();if(state.profile?.is_active)subscribeChanges();},10);}}});render();}catch(e){app.innerHTML=`<div class="empty" style="min-height:90vh"><b>تعذّر تشغيل الموقع</b><p>${esc(e.message)}. تحقق من بيانات الاتصال بالقاعدة والاتصال بالإنترنت.</p></div>`;}}
 let backgroundRefreshRunning=false;
 async function refreshInBackground(){
  if(backgroundRefreshRunning||!state.profile?.is_active)return;
@@ -352,20 +683,24 @@ for(let i=0;i<cases.length;i++){let c=cases[i],heightBox=sizes[i];if(y+heightBox
 ctx.fillStyle='#81766e';ctx.textAlign='center';ctx.font='21px "Thmanyah Sans", Tahoma, Arial, sans-serif';ctx.fillText((isReportApproved()?'تقرير معتمد • ':'تقرير غير معتمد • ')+'أعده: '+short(state.profile?.display_name||'',24)+' • مستخرج نصي أولي من الضبط',w/2,Math.min(y+29,totalHeight-45));return canvas;}
 async function sharePng(){const cases=listForDate().filter(x=>!state.posterApprovedOnly||x.status==='approved');if(!cases.length)return;try{const canvas=buildPosterCanvas(cases);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob)throw Error('تعذّر إنشاء الصورة');const file=new File([blob],`تقرير-القضايا-${state.filterDate}.png`,{type:'image/png'});if(navigator.share && navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:'تقرير تنظيم أعمال الدائرة الرابعة'});}else{notify('المشاركة المباشرة غير متاحة في هذا المتصفح؛ استخدم حفظ الصورة ثم أرسلها.');exportPng();}}catch(e){if(e.name!=='AbortError')notify('تعذرت مشاركة الصورة: '+e.message,'error');}}
 function exportPng(){const cases=listForDate().filter(x=>!state.posterApprovedOnly||x.status==='approved');if(!cases.length)return notify('لا توجد قضايا لتصديرها.','error');try{const canvas=buildPosterCanvas(cases);canvas.toBlob(blob=>{if(!blob)return notify('لم يتمكن المتصفح من إنشاء الصورة.','error');const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`تقرير-القضايا-${state.filterDate}.png`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),12000);notify('تم تجهيز صورة التقرير للحفظ.','success');},'image/png');}catch(e){notify('تعذر حفظ الصورة: '+e.message,'error');}}
-document.addEventListener('click',async e=>{const target=e.target.closest('[data-nav],[data-action],[data-edit],[data-detail],[data-approve],[data-save],[data-stage],[data-person],[data-task-toggle],[data-task-edit],[data-task-filter],[data-day-tab]');if(!target)return;if(target.dataset.dayTab){if(dayWithinWindow(target.dataset.dayTab)){state.filterDate=target.dataset.dayTab;render();}return;}if(target.dataset.person){const choice=STAFF.find(x=>x.id===target.dataset.person);if(DEMO){state.profile=choice;localStorage.setItem('fourth-circuit-demo-profile',choice.id);notify(`مرحبًا ${choice.display_name}`,'success');render();}else{await joinDevice(choice);}return;}if(target.dataset.taskToggle){await toggleTask(target.dataset.taskToggle);return;}if(target.dataset.taskEdit){openTaskEditor(target.dataset.taskEdit);return;}if(target.dataset.taskFilter){state.taskFilter=target.dataset.taskFilter;render();return;}if(target.dataset.nav){navigate(target.dataset.nav);return;}if(target.dataset.edit){openEditor(target.dataset.edit);return;}if(target.dataset.detail){state.detailId=target.dataset.detail;state.showSource=false;render();return;}if(target.dataset.approve){await approveCase(target.dataset.approve);return;}if(target.dataset.save){await saveCase(target.dataset.save);return;}if(target.dataset.stage){state.stageFilter=target.dataset.stage;render();return;}const action=target.dataset.action;if(!action)return;switch(action){case 'new-case':openEditor();break;case 'new-task':openTaskEditor();break;case 'close-task-editor':closeTaskEditor();break;case 'delete-task':await deleteTask();break;case 'approve-report':await approveReport();break;case 'export-tasks':exportTasksPng();break;case 'close-editor':case 'close-detail':closeModal();break;case 'toggle-source':state.showSource=!state.showSource;render();break;case 'next-day':state.filterDate=nextWorkday();render();break;case 'approve-from-editor':await saveCase('approved');break;case 'delete-case':await softDeleteCase();break;case 'toggle-notifs':state.showNotifs=!state.showNotifs;render();break;case 'mark-read':await markRead();break;case 'enable-notifs':await enableNotifications();break;case 'refresh':await loadAll();notify('تم تحديث البيانات من القاعدة.','success');break;case 'refresh-profile':await refreshProfile();break;case 'logout':if(DEMO){state.profile=null;localStorage.removeItem('fourth-circuit-demo-profile');render();}else await state.client?.auth.signOut();break;case 'toggle-auth':state.authMode=state.authMode==='login'?'signup':'login';render();break;case 'export-png':exportPng();break;case 'share-png':await sharePng();break;}});
-document.addEventListener('input',e=>{if(e.target.dataset.formField&&e.target.dataset.formField!=='stage'&&state.form){state.form[e.target.dataset.formField]=e.target.value;}if(e.target.dataset.taskField&&state.taskForm){state.taskForm[e.target.dataset.taskField]=e.target.value;}if(e.target.matches('[data-task-search]')){state.taskSearch=e.target.value;const list=$('.tasks-list');if(list){const temp=state.taskSearch;state.taskSearch=temp;list.innerHTML=state.tasks.filter(t=>!t.deleted_at&&(state.taskFilter==='all'||t.status===state.taskFilter)&&[t.title,t.details,t.case_number,profileName(t.created_by)].join(' ').includes(temp)).map(taskRow).join('')||'<div class="card empty">لا توجد نتائج</div>';}}if(e.target.matches('[data-search]')){state.search=e.target.value;const list=$('.cases-list');if(list)list.innerHTML=filteredCases().length?filteredCases().map(caseRow).join(''):emptyState();}});
+document.addEventListener('click',async e=>{const target=e.target.closest('[data-nav],[data-action],[data-edit],[data-detail],[data-approve],[data-save],[data-stage],[data-person],[data-task-toggle],[data-task-edit],[data-task-filter],[data-day-tab]');if(!target)return;if(target.dataset.dayTab){if(dayWithinWindow(target.dataset.dayTab)){state.filterDate=target.dataset.dayTab;render();}return;}if(target.dataset.person){const choice=STAFF.find(x=>x.id===target.dataset.person);if(DEMO){state.profile=choice;localStorage.setItem('fourth-circuit-demo-profile',choice.id);notify(`مرحبًا ${choice.display_name}`,'success');render();}else{await joinDevice(choice);}return;}if(target.dataset.taskToggle){await toggleTask(target.dataset.taskToggle);return;}if(target.dataset.taskEdit){openTaskEditor(target.dataset.taskEdit);return;}if(target.dataset.taskFilter){state.taskFilter=target.dataset.taskFilter;render();return;}if(target.dataset.nav){navigate(target.dataset.nav);return;}if(target.dataset.edit){openEditor(target.dataset.edit);return;}if(target.dataset.detail){state.detailId=target.dataset.detail;state.showSource=false;render();return;}if(target.dataset.approve){await approveCase(target.dataset.approve);return;}if(target.dataset.save){await saveCase(target.dataset.save);return;}if(target.dataset.stage){state.stageFilter=target.dataset.stage;render();return;}const action=target.dataset.action;if(!action)return;switch(action){case 'new-case':openEditor();break;case 'new-bulk':openBulkEntry();break;case 'close-bulk':case 'discard-bulk':case 'add-bulk-row':case 'bulk-details':case 'remove-bulk-row':bulkAction(action,target);break;case 'discard-case-draft':discardSingleDraft();break;case 'new-task':openTaskEditor();break;case 'close-task-editor':closeTaskEditor();break;case 'delete-task':await deleteTask();break;case 'approve-report':await approveReport();break;case 'export-tasks':exportTasksPng();break;case 'close-editor':case 'close-detail':if(!caseSaving)closeModal();break;case 'toggle-source':state.showSource=!state.showSource;render();break;case 'next-day':state.filterDate=nextWorkday();render();break;case 'approve-from-editor':await saveCase('approved');break;case 'delete-case':await softDeleteCase();break;case 'toggle-notifs':state.showNotifs=!state.showNotifs;render();break;case 'mark-read':await markRead();break;case 'enable-notifs':await enableNotifications();break;case 'refresh':await loadAll();notify('تم تحديث البيانات من القاعدة.','success');break;case 'refresh-profile':await refreshProfile();break;case 'logout':if(DEMO){resetCaseEntry();state.profile=null;localStorage.removeItem('fourth-circuit-demo-profile');render();}else await state.client?.auth.signOut();break;case 'toggle-auth':state.authMode=state.authMode==='login'?'signup':'login';render();break;case 'export-png':exportPng();break;case 'share-png':await sharePng();break;}});
+document.addEventListener('input',e=>{if(e.target.dataset.formField&&e.target.dataset.formField!=='stage'){const row=bulkRowFor(e.target);if(row||state.form){(row||state.form)[e.target.dataset.formField]=e.target.value;rememberCaseEntry();markCaseError(e.target.closest('[data-case-control]'),'');}}if(e.target.dataset.taskField&&state.taskForm){state.taskForm[e.target.dataset.taskField]=e.target.value;}if(e.target.matches('[data-task-search]')){state.taskSearch=e.target.value;const list=$('.tasks-list');if(list){const temp=state.taskSearch;state.taskSearch=temp;list.innerHTML=state.tasks.filter(t=>!t.deleted_at&&(state.taskFilter==='all'||t.status===state.taskFilter)&&[t.title,t.details,t.case_number,profileName(t.created_by)].join(' ').includes(temp)).map(taskRow).join('')||'<div class="card empty">لا توجد نتائج</div>';}}if(e.target.matches('[data-search]')){state.search=e.target.value;const list=$('.cases-list');if(list)list.innerHTML=filteredCases().length?filteredCases().map(caseRow).join(''):emptyState();}});
 document.addEventListener('change',e=>{
- if(e.target.matches('[data-form-field="stage"]')&&state.form){changeCaseStage(e.target);return;}
+ if(e.target.matches('[data-form-field="stage"]')&&(state.form||bulkEntry)){changeCaseStage(e.target);return;}
+ if(e.target.id==='bulk-default-date'&&bulkEntry){bulkEntry.date=e.target.value;rememberCaseEntry();markCaseError(e.target.closest('[data-case-control]'),'');return;}
  if(e.target.matches('[data-filter-date]')){if(dayWithinWindow(e.target.value)){state.filterDate=e.target.value;render();}else notify('اختر يوم عمل من الأيام الخمسة القادمة.','error');}
  if(e.target.matches('[data-hijri-part]')){
-  const fld=e.target.dataset.hijriField,selection=readHijriPicker(fld);
+  const fld=e.target.dataset.hijriField;
+  if(fld==='previous_date'){const caseForm=bulkRowFor(e.target)||state.form;if(caseForm)updateCaseDatePart(caseForm,e.target);return;}
+  const selection=readHijriPicker(fld);
   const form=fld==='previous_date'?state.form:state.taskForm;
   if(selection.ok&&form)form[fld]=selection.value;
   if(!selection.ok && [...document.querySelectorAll(`[data-hijri-field="${fld}"]`)].every(el=>el.value))notify(selection.message,'error');
  }
  if(e.target.matches('[data-approved-only]')){state.posterApprovedOnly=e.target.checked;render();}
 });
-document.addEventListener('submit',e=>{if(e.target.id==='case-form'){e.preventDefault();saveCase('ready');}if(e.target.id==='task-form'){e.preventDefault();saveTask();}});
+document.addEventListener('focusout',e=>{if(e.target.matches('[data-bulk-row] [data-form-field="session_time"]'))setTimeout(reorderBulkRows,0);});
+document.addEventListener('submit',e=>{if(e.target.id==='bulk-case-form'){e.preventDefault();void saveBulkEntry();}if(e.target.id==='case-form'){e.preventDefault();saveCase('ready');}if(e.target.id==='task-form'){e.preventDefault();saveTask();}});
 let hearingsContainer;
 let hearingsMount;
 function showHearings(){

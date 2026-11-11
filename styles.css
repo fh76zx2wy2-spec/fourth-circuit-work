@@ -182,3 +182,40 @@ body{background:var(--bg)}
  .circuit-app .topbar-heading{min-width:0}
  .circuit-app .topbar{height:auto;min-height:66px;padding-block:6px}
 }
+.case-entry-actions{display:flex;flex-wrap:wrap;gap:6px}
+.case-required,.case-error{color:var(--red,#b3262e)}
+.case-required{font-weight:800}
+.case-error{display:block;font-size:12px;line-height:1.5;margin-top:5px}
+.case-error[hidden]{display:none}
+.case-invalid input,.case-invalid select,.case-invalid textarea{border-color:var(--red,#b3262e)!important;box-shadow:0 0 0 1px var(--red,#b3262e)}
+.bulk-modal{width:min(1200px,100%);max-width:1200px}
+#bulk-case-form{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.bulk-date{max-width:365px}
+.bulk-grid{display:grid;grid-template-columns:1fr .8fr 1.1fr 1.1fr 1fr 1.2fr auto;gap:8px;align-items:start}
+.bulk-grid .input{width:100%;min-width:0}
+.bulk-grid .case-field{min-width:0;margin:0}
+.bulk-head{padding:8px 10px;color:var(--brown);font-weight:700;font-size:12px}
+.bulk-row{border:1px solid var(--border);border-radius:8px;background:var(--panel);padding:10px;margin-bottom:8px}
+.bulk-row-label{color:var(--muted);font-weight:700;font-size:12px;margin-bottom:6px}
+.bulk-row-actions{display:flex;flex-wrap:wrap;gap:4px}
+.bulk-details{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.bulk-details .hijri-field{margin-bottom:0}
+.case-field[data-case-control="previous_date"] .hijri-field{margin-top:0}
+@media(min-width:901px){
+ .bulk-grid .form-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+}
+@media(max-width:900px){
+ .bulk-head{display:none}
+ .bulk-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .bulk-row-actions{grid-column:1/-1}
+ .bulk-modal{max-width:100%}
+}
+@media(max-width:760px){
+ #bulk-backdrop{padding:0;place-items:stretch}
+ .bulk-modal{height:100dvh;max-height:100dvh;border-radius:0;display:flex;flex-direction:column}
+ .bulk-modal .modal-head{flex-shrink:0}
+ .bulk-modal .modal-body{overflow:auto;flex:1;min-height:0}
+ .bulk-modal .modal-foot{flex-wrap:wrap;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+ .bulk-modal input,.bulk-modal select,.bulk-modal textarea{font-size:16px}
+ .case-entry-actions{grid-column:1/-1}
+}
