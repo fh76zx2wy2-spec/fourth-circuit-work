@@ -212,6 +212,35 @@ function caseInput(form,name,id,type='text'){
  return caseField(name,`<label class="form-label" for="${id}">${CASE_LABELS[name]}${CASE_STAR}</label>`,
   `<input id="${id}" class="input" data-form-field="${name}" type="${type}" value="${esc(form[name]||'')}" required ${name==='case_number'?'maxlength="60"':''}>`);
 }
+function caseTime(form,id){
+ const match=/^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d(?:\.\d+)?)?$/.exec(form.session_time||'');
+ const parts=form.session_time_parts||(match?[String(Number(match[1])%12||12),match[2],Number(match[1])<12?'am':'pm']:[]);
+ const hours=Array.from({length:12},(_,i)=>[String(i+1),String(i+1)]);
+ const minutes=Array.from({length:60},(_,i)=>String(i).padStart(2,'0')).map(value=>[value,value]);
+ const selects=[['الساعة',hours],['الدقيقة',minutes],['الفترة',[['am','صباحًا'],['pm','مساءً']]]];
+ const controls=selects.map(([label,options],index)=>`<select id="${id}-${index}" class="input" data-case-time-part aria-label="${CASE_LABELS.session_time} — ${label}" required>
+  <option value="">${label}</option>${options.map(([value,text])=>`<option value="${value}"${parts[index]===value?' selected':''}>${text}</option>`).join('')}
+ </select>`).join('');
+ return caseField('session_time',`<span id="${id}-label" class="form-label">${CASE_LABELS.session_time}${CASE_STAR}</span>`,
+  `<div class="case-time" role="group" aria-labelledby="${id}-label">${controls}</div>`);
+}
+function updateCaseTime(target){
+ const form=bulkRowFor(target)||state.form;
+ if(!form)return;
+ const group=target.closest('[data-case-control]');
+ const parts=Array.from(group.querySelectorAll('[data-case-time-part]'),select=>select.value);
+ const [hour,minute,period]=parts;
+ if(hour&&minute&&period){
+  const hour24=Number(hour)%12+(period==='pm'?12:0);
+  form.session_time=`${String(hour24).padStart(2,'0')}:${minute}`;
+  delete form.session_time_parts;
+ }else{
+  form.session_time='';
+  form.session_time_parts=parts;
+ }
+ rememberCaseEntry();
+ if(form.session_time)markCaseError(group,'');
+}
 function caseArea(form,name,id,rows){
  return caseField(name,`<label class="form-label" for="${id}">${CASE_LABELS[name]}${CASE_STAR}</label>`,
   `<textarea id="${id}" class="input" data-form-field="${name}" rows="${rows}" required>${esc(form[name]||'')}</textarea>`,{wide:true});
@@ -278,7 +307,7 @@ function showCaseErrors(container,errors){
  for(const group of container.querySelectorAll('[data-case-control]')){
   const message=errors[group.dataset.caseControl];
   markCaseError(group,message);
-  if(message&&!first)first=group.querySelector('input,select,textarea');
+  if(message&&!first)first=group.querySelector('[data-case-time-part]:invalid')||group.querySelector('input,select,textarea');
  }
  return first;
 }
@@ -368,7 +397,7 @@ function bulkRow(row,index){
  return `<article class="bulk-row" data-bulk-row="${row.id}">
   <div class="bulk-row-label" data-bulk-index>${rowLabel}${row.saved?' · حُفظت':row.attempted?' · بانتظار تأكيد الحفظ':''}</div>
   ${row.saved||row.attempted?`<p class="hint">${esc(row.case_number)} · ${esc(tm(row.session_time))}</p>`:`<div class="bulk-grid">
-   ${caseInput(row,'case_number',id('number'))}${caseInput(row,'session_time',id('time'),'time')}
+   ${caseInput(row,'case_number',id('number'))}${caseTime(row,id('time'))}
    ${caseInput(row,'plaintiffs',id('plaintiffs'))}${caseInput(row,'defendants',id('defendants'))}
    ${caseInput(row,'case_type',id('type'))}${caseStage(row,id('stage'))}
    <div class="bulk-row-actions"><button type="button" class="btn btn-small" data-action="bulk-details" aria-expanded="${row.expanded}">التفاصيل</button><button type="button" class="btn btn-small btn-danger" data-action="remove-bulk-row" aria-label="حذف ${rowLabel}">حذف</button></div>
@@ -509,7 +538,7 @@ async function saveBulkEntry(){
 function editorModal(){
  const f=state.form,id=state.editorId,canApprove=isJudge()&&id!=='new';
  const sessionSelect=caseDate(f,'f_session_date',{label:'تاريخ الجلسة القادمة (هجري)'});
- return `<div class="modal-backdrop" id="editor-backdrop"><div id="case-entry-dialog" class="modal" role="dialog" aria-modal="true" aria-labelledby="case-entry-title"><div class="modal-head"><div><h2 id="case-entry-title">${id==='new'?'إضافة القضايا':'تعديل بيانات القضية'}</h2><small>${draftHint()}</small></div><button class="icon-button" data-action="close-editor" aria-label="إغلاق">✕</button></div>${id==='new'?caseEntryModes('single'):''}<form id="case-form" novalidate><div class="modal-body"><div class="form-grid">${caseInput(f,'case_number','f_case_number','text')}${sessionSelect}${caseInput(f,'session_time','f_session_time','time')}${caseInput(f,'plaintiffs','f_plaintiffs','text')}${caseInput(f,'defendants','f_defendants','text')}${caseInput(f,'case_type','f_case_type','text')}${caseStage(f,'f_stage')}${f.stage==='followup'?casePreviousDate(f):''}</div><div class="form-grid">${caseArea(f,'claim_summary','f_claim_summary',4)}</div>${f.stage==='followup'?`<div class="divider-label">الضبط الأصلي للجلسة السابقة</div><p class="hint">الصق ضبط الجلسة السابقة كاملًا كما هو في تقاضي، دون اختصار. يُعرض للقاضي مقتطف تحضيري تلقائيًا مع إمكانية فتح الأصل كاملًا.</p><div class="form-grid">${caseArea(f,'previous_minutes','f_previous_minutes',12)}</div>`:''}</div><div class="modal-foot">${id!=='new'?'<button type="button" class="btn btn-danger" data-action="delete-case">حذف من الجدول</button>':''}<button type="button" class="btn" data-action="close-editor">إلغاء</button><button type="button" class="btn btn-soft" data-save="draft">حفظ مسودة محليًا</button><button type="button" class="btn" data-action="discard-case-draft">حذف المسودة</button><button type="button" class="btn btn-primary" data-save="ready">حفظ وإرسال للمراجعة</button>${canApprove?'<button type="button" class="btn btn-primary" data-action="approve-from-editor">✓ حفظ واعتماد</button>':''}</div></form></div></div>`;
+ return `<div class="modal-backdrop" id="editor-backdrop"><div id="case-entry-dialog" class="modal" role="dialog" aria-modal="true" aria-labelledby="case-entry-title"><div class="modal-head"><div><h2 id="case-entry-title">${id==='new'?'إضافة القضايا':'تعديل بيانات القضية'}</h2><small>${draftHint()}</small></div><button class="icon-button" data-action="close-editor" aria-label="إغلاق">✕</button></div>${id==='new'?caseEntryModes('single'):''}<form id="case-form" novalidate><div class="modal-body"><div class="form-grid">${caseInput(f,'case_number','f_case_number','text')}${sessionSelect}${caseTime(f,'f_session_time')}${caseInput(f,'plaintiffs','f_plaintiffs','text')}${caseInput(f,'defendants','f_defendants','text')}${caseInput(f,'case_type','f_case_type','text')}${caseStage(f,'f_stage')}${f.stage==='followup'?casePreviousDate(f):''}</div><div class="form-grid">${caseArea(f,'claim_summary','f_claim_summary',4)}</div>${f.stage==='followup'?`<div class="divider-label">الضبط الأصلي للجلسة السابقة</div><p class="hint">الصق ضبط الجلسة السابقة كاملًا كما هو في تقاضي، دون اختصار. يُعرض للقاضي مقتطف تحضيري تلقائيًا مع إمكانية فتح الأصل كاملًا.</p><div class="form-grid">${caseArea(f,'previous_minutes','f_previous_minutes',12)}</div>`:''}</div><div class="modal-foot">${id!=='new'?'<button type="button" class="btn btn-danger" data-action="delete-case">حذف من الجدول</button>':''}<button type="button" class="btn" data-action="close-editor">إلغاء</button><button type="button" class="btn btn-soft" data-save="draft">حفظ مسودة محليًا</button><button type="button" class="btn" data-action="discard-case-draft">حذف المسودة</button><button type="button" class="btn btn-primary" data-save="ready">حفظ وإرسال للمراجعة</button>${canApprove?'<button type="button" class="btn btn-primary" data-action="approve-from-editor">✓ حفظ واعتماد</button>':''}</div></form></div></div>`;
 }
 function detailModal(){
  const c=state.cases.find(x=>x.id===state.detailId);if(!c)return '';
@@ -707,6 +736,7 @@ function exportPng(){const cases=listForDate().filter(x=>!state.posterApprovedOn
 document.addEventListener('click',async e=>{const target=e.target.closest('[data-nav],[data-action],[data-edit],[data-detail],[data-approve],[data-save],[data-stage],[data-person],[data-task-toggle],[data-task-edit],[data-task-filter],[data-day-tab]');if(!target)return;if(target.dataset.dayTab){if(dayWithinWindow(target.dataset.dayTab)){state.filterDate=target.dataset.dayTab;render();}return;}if(target.dataset.person){const choice=STAFF.find(x=>x.id===target.dataset.person);if(DEMO){state.profile=choice;localStorage.setItem('fourth-circuit-demo-profile',choice.id);notify(`مرحبًا ${choice.display_name}`,'success');render();}else{await joinDevice(choice);}return;}if(target.dataset.taskToggle){await toggleTask(target.dataset.taskToggle);return;}if(target.dataset.taskEdit){openTaskEditor(target.dataset.taskEdit);return;}if(target.dataset.taskFilter){state.taskFilter=target.dataset.taskFilter;render();return;}if(target.dataset.nav){navigate(target.dataset.nav);return;}if(target.dataset.edit){openEditor(target.dataset.edit);return;}if(target.dataset.detail){state.detailId=target.dataset.detail;state.showSource=false;render();return;}if(target.dataset.approve){await approveCase(target.dataset.approve);return;}if(target.dataset.save){await saveCase(target.dataset.save);return;}if(target.dataset.stage){state.stageFilter=target.dataset.stage;render();return;}const action=target.dataset.action;if(!action)return;switch(action){case 'new-case':openEditor();break;case 'case-entry-mode':switchCaseEntry(target.dataset.entryMode);break;case 'close-bulk':case 'discard-bulk':case 'add-bulk-row':case 'bulk-details':case 'remove-bulk-row':bulkAction(action,target);break;case 'discard-case-draft':discardSingleDraft();break;case 'new-task':openTaskEditor();break;case 'close-task-editor':closeTaskEditor();break;case 'delete-task':await deleteTask();break;case 'approve-report':await approveReport();break;case 'export-tasks':exportTasksPng();break;case 'close-editor':case 'close-detail':if(!caseSaving)closeModal();break;case 'toggle-source':state.showSource=!state.showSource;render();break;case 'next-day':state.filterDate=nextWorkday();render();break;case 'approve-from-editor':await saveCase('approved');break;case 'delete-case':await softDeleteCase();break;case 'toggle-notifs':state.showNotifs=!state.showNotifs;render();break;case 'mark-read':await markRead();break;case 'enable-notifs':await enableNotifications();break;case 'refresh':await loadAll();notify('تم تحديث البيانات من القاعدة.','success');break;case 'refresh-profile':await refreshProfile();break;case 'logout':if(DEMO){resetCaseEntry();state.profile=null;localStorage.removeItem('fourth-circuit-demo-profile');render();}else await state.client?.auth.signOut();break;case 'toggle-auth':state.authMode=state.authMode==='login'?'signup':'login';render();break;case 'export-png':exportPng();break;case 'share-png':await sharePng();break;}});
 document.addEventListener('input',e=>{if(e.target.dataset.formField&&e.target.dataset.formField!=='stage'){const row=bulkRowFor(e.target);if(row||state.form){(row||state.form)[e.target.dataset.formField]=e.target.value;rememberCaseEntry();markCaseError(e.target.closest('[data-case-control]'),'');}}if(e.target.dataset.taskField&&state.taskForm){state.taskForm[e.target.dataset.taskField]=e.target.value;}if(e.target.matches('[data-task-search]')){state.taskSearch=e.target.value;const list=$('.tasks-list');if(list){const temp=state.taskSearch;state.taskSearch=temp;list.innerHTML=state.tasks.filter(t=>!t.deleted_at&&(state.taskFilter==='all'||t.status===state.taskFilter)&&[t.title,t.details,t.case_number,profileName(t.created_by)].join(' ').includes(temp)).map(taskRow).join('')||'<div class="card empty">لا توجد نتائج</div>';}}if(e.target.matches('[data-search]')){state.search=e.target.value;const list=$('.cases-list');if(list)list.innerHTML=filteredCases().length?filteredCases().map(caseRow).join(''):emptyState();}});
 document.addEventListener('change',e=>{
+ if(e.target.matches('[data-case-time-part]')){updateCaseTime(e.target);return;}
  if(e.target.matches('[data-form-field="stage"]')&&(state.form||bulkEntry)){changeCaseStage(e.target);return;}
  if(e.target.id==='bulk-default-date'&&bulkEntry){bulkEntry.date=e.target.value;rememberCaseEntry();markCaseError(e.target.closest('[data-case-control]'),'');return;}
  if(e.target.matches('[data-filter-date]')){if(dayWithinWindow(e.target.value)){state.filterDate=e.target.value;render();}else notify('اختر يوم عمل من الأيام الخمسة القادمة.','error');}
@@ -720,7 +750,13 @@ document.addEventListener('change',e=>{
  }
  if(e.target.matches('[data-approved-only]')){state.posterApprovedOnly=e.target.checked;render();}
 });
-document.addEventListener('focusout',e=>{if(e.target.matches('[data-bulk-row] [data-form-field="session_time"]'))setTimeout(reorderBulkRows,0);});
+document.addEventListener('focusout',e=>{
+ if(!e.target.matches('[data-bulk-row] [data-case-time-part]'))return;
+ const group=e.target.closest('.case-time');
+ if(!group.contains(e.relatedTarget))setTimeout(()=>{
+  if(group.isConnected&&!group.contains(document.activeElement))reorderBulkRows();
+ },0);
+});
 document.addEventListener('submit',e=>{if(e.target.id==='bulk-case-form'){e.preventDefault();void saveBulkEntry();}if(e.target.id==='case-form'){e.preventDefault();saveCase('ready');}if(e.target.id==='task-form'){e.preventDefault();saveTask();}});
 let hearingsContainer;
 let hearingsMount;

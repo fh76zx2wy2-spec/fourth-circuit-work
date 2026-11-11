@@ -188,10 +188,12 @@ body{background:var(--bg)}
 .case-error{display:block;font-size:12px;line-height:1.5;margin-top:5px}
 .case-error[hidden]{display:none}
 .case-invalid input,.case-invalid select,.case-invalid textarea{border-color:var(--red,#b3262e)!important;box-shadow:0 0 0 1px var(--red,#b3262e)}
+.case-time{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.25fr);gap:4px}
+.case-time .input{min-width:0;padding-inline:4px}
 .bulk-modal{width:min(1200px,100%);max-width:1200px}
 #bulk-case-form{display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .bulk-date{max-width:365px}
-.bulk-grid{display:grid;grid-template-columns:1fr .8fr 1.1fr 1.1fr 1fr 1.2fr auto;gap:8px;align-items:start}
+.bulk-grid{display:grid;grid-template-columns:1fr minmax(198px,1.65fr) 1.1fr 1.1fr 1fr 1.2fr auto;gap:8px;align-items:start}
 .bulk-grid .input{width:100%;min-width:0}
 .bulk-grid .case-field{min-width:0;margin:0}
 .bulk-head{padding:8px 10px;color:var(--brown);font-weight:700;font-size:12px}
@@ -207,7 +209,7 @@ body{background:var(--bg)}
 @media(max-width:900px){
  .bulk-head{display:none}
  .bulk-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
- .bulk-row-actions{grid-column:1/-1}
+ .bulk-grid [data-case-control="session_time"],.bulk-row-actions{grid-column:1/-1}
  .bulk-modal{max-width:100%}
 }
 @media(max-width:760px){
