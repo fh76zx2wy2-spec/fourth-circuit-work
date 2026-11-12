@@ -239,3 +239,10 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .case-approval-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
 .case-approval-actions label{display:inline-flex;align-items:center;gap:6px;padding:8px;cursor:pointer}
 .case-approval ul{margin:4px 0;padding-inline-start:22px}
+.case-assignee{display:flex;align-items:center;gap:.3rem;margin-top:.35rem;font-size:.78rem;color:#5c6572}
+.session-number{display:inline-flex;align-items:center;gap:.25rem;font-size:.76rem;white-space:nowrap;color:#293547}
+.session-number i{width:.55rem;height:.55rem;border-radius:50%;background:var(--session-color);flex:none}
+.session-number-early{--session-color:#27864c}
+.session-number-middle{--session-color:#c38908}
+.session-number-late{--session-color:#d33b38}
+.session-number-extended{--session-color:#841d32}
