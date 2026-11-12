@@ -455,7 +455,37 @@ async function refreshCaseAssignments(){
   }
  }
 }
-function caseRow(c,selectable=false){return `<article class="case-row"><div class="case-time-slot"><div class="time-pill">${esc(tm(c.session_time))}</div>${selectable&&c.status!=='approved'?`<input type="checkbox" data-approval-case="${esc(c.id)}" aria-label="تحديد القضية ${esc(c.case_number)}" ${approvalSelection.has(c.id)?'checked':''} ${batchApproving?'disabled':''}>`:''}</div><div class="case-content"><div class="case-title">${esc(c.case_type||'قضية دون تصنيف')} <span class="badge ${esc(c.status)}">${c.status==='approved'?'✓ ':''}${statusTitle(c.status)}</span></div><div class="case-sub"><span>رقم ${caseNumberButton(c.case_number)}</span><span>${esc(short(c.plaintiffs,34))} × ${esc(short(c.defendants,34))}</span>${sessionNumberBadge(c)}<span class="byline">أدخله: ${esc(profileName(c.created_by))}</span></div><div class="case-assignee"><span aria-hidden="true">👤</span> <span data-case-assignee="${esc(c.id)}">${esc(assigneeLabel(c))}</span></div></div><div class="case-row-actions"><button class="btn btn-small" data-detail="${esc(c.id)}">عرض</button><button class="btn btn-small btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></article>`;}
+let sessionOutcomes=new Map();
+function outcomeKey(caseNumber,date){return JSON.stringify([latinDigits(String(caseNumber??'').trim()),date]);}
+function priorOutcome(c){
+ if(c.stage!=='followup'||!c.previous_date||c.previous_date>=c.session_date)return null;
+ return sessionOutcomes.get(outcomeKey(c.case_number,c.previous_date))??null;
+}
+function outcomeLabel(item){return item.is_result?'نتيجة الجلسة السابقة':'سبب رفع الجلسة السابقة';}
+function outcomeEditor(c){
+ if(c.stage!=='followup'||!c.previous_date||c.previous_date>=c.session_date||!c.previous_minutes?.trim()||DEMO)return '';
+ const item=priorOutcome(c);
+ return `<form id="session-outcome-form" class="detail-field detail-wide">
+  <label for="session-outcome-text">${item?outcomeLabel(item):'سبب الرفع أو نتيجة الجلسة السابقة'}</label>
+  <input id="session-outcome-text" name="outcome" maxlength="180" value="${esc(item?.outcome??'')}" placeholder="أدخل السبب إذا لم يتضح من الضبط">
+  <label><input type="checkbox" name="isResult" ${item?.is_result?'checked':''}> نتيجة قضائية (مثل الحكم أو الشطب)</label>
+  <button class="btn btn-small btn-soft" type="submit">حفظ سبب الرفع أو النتيجة</button>
+ </form>`;
+}
+async function saveSessionOutcome(form){
+ const id=state.detailId;
+ const submit=form.querySelector('button[type=submit]');
+ if(!id||submit.disabled)return;
+ submit.disabled=true;
+ try{
+  const {error}=await state.client.rpc('set_session_outcome',{p_case_id:id,p_outcome:latinDigits(form.elements.outcome.value),p_is_result:form.elements.isResult.checked});
+  if(error)throw error;
+  await loadAll();
+  notify('حُفظت نتيجة الجلسة السابقة.','success');
+ }catch{notify('تعذّر حفظ نتيجة الجلسة السابقة.','error');}
+ finally{submit.disabled=false;}
+}
+function caseRow(c,selectable=false){const item=priorOutcome(c);return `<article class="case-row"><div class="case-time-slot"><div class="time-pill">${esc(tm(c.session_time))}</div>${selectable&&c.status!=='approved'?`<input type="checkbox" data-approval-case="${esc(c.id)}" aria-label="تحديد القضية ${esc(c.case_number)}" ${approvalSelection.has(c.id)?'checked':''} ${batchApproving?'disabled':''}>`:''}</div><div class="case-content"><div class="case-title">${esc(c.case_type||'قضية دون تصنيف')} <span class="badge ${esc(c.status)}">${c.status==='approved'?'✓ ':''}${statusTitle(c.status)}</span></div><div class="case-sub"><span>رقم ${caseNumberButton(c.case_number)}</span><span>${esc(short(c.plaintiffs,34))} × ${esc(short(c.defendants,34))}</span>${sessionNumberBadge(c)}<span class="byline">أدخله: ${esc(profileName(c.created_by))}</span></div><div class="case-assignee"><span aria-hidden="true">👤</span> <span data-case-assignee="${esc(c.id)}">${esc(assigneeLabel(c))}</span></div>${item?.outcome?`<div class="case-assignee">${outcomeLabel(item)}: ${esc(item.outcome)}</div>`:''}</div><div class="case-row-actions"><button class="btn btn-small" data-detail="${esc(c.id)}">عرض</button><button class="btn btn-small btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></article>`;}
 function emptyState(){return `<div class="card empty"><span class="empty-icon">▤</span><b>لا توجد قضايا في هذا التاريخ</b><p>يمكن إضافة القضايا وتعديلها في أي وقت خلال الأيام الخمسة القادمة.</p></div>`;}
 function sessionsPage(){
  const report=state.screen==='poster';
@@ -1082,7 +1112,7 @@ function detailModal(){
  const c=state.cases.find(x=>x.id===state.detailId);if(!c)return '';
  const info=(title,value,wide=false)=>`<div class="detail-field ${wide?'detail-wide':''}"><small>${title}</small><p>${esc(value||'غير مدخل')}</p></div>`;
  const m=minutesExtract(c),judge=isJudge();
- return `<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>القضية رقم ${caseNumberButton(c.case_number)}</h2><small>${esc(c.case_type)} • ${hijriLong(c.session_date)} • ${tm(c.session_time)}</small></div><button class="icon-button" data-action="close-detail">✕</button></div><div class="modal-body"><div class="status-line"><span class="badge ${esc(c.status)}">${statusTitle(c.status)}</span><span class="pill">${sessionNumberBadge(c)}</span></div><div class="detail-grid" style="margin-top:24px">${info('المدعي',c.plaintiffs)}${info('المدعى عليه',c.defendants)}${info('موضوع الدعوى',c.claim_summary,true)}${c.previous_date?info('تاريخ الجلسة الأخيرة',hijriLong(c.previous_date),true):''}${judge?`<div class="detail-field detail-wide summary-card"><small>معاينة مختصرة آلية من الضبط الأصلي</small><p>${esc(m.overview)}</p>${m.evidence?`<small class="summary-label">عبارة ورود رفع الجلسة في المحضر</small><p class="quote-text">${esc(m.evidence)}</p>`:''}<small class="summary-note">هذا استخراج نصي أولي غير معتمد، وقد لا يوضح سبب الرفع بدقة. راجع الأصل دائمًا.</small></div><div class="detail-field detail-wide"><button class="btn btn-soft" data-action="toggle-source">${state.showSource?'إخفاء':'عرض'} ضبط الجلسة السابقة كاملًا</button>${state.showSource?`<div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div>`:''}</div>`:`<div class="detail-field detail-wide"><small>الضبط الأصلي كاملًا</small><div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div></div>`}${judge?preparationPanel():''}<div class="detail-field detail-wide"><small>آخر تحديث</small><p>${stamp(c.updated_at)} • ${esc(profileName(c.updated_by||c.created_by))}</p></div></div></div><div class="modal-foot"><button class="btn" data-action="close-detail">إغلاق</button><button class="btn btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button>${isJudge()&&c.status!=='approved'?`<button class="btn btn-primary" data-approve="${esc(c.id)}">✓ اعتماد البيانات</button>`:''}</div></div></div>`;
+ return `<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>القضية رقم ${caseNumberButton(c.case_number)}</h2><small>${esc(c.case_type)} • ${hijriLong(c.session_date)} • ${tm(c.session_time)}</small></div><button class="icon-button" data-action="close-detail">✕</button></div><div class="modal-body"><div class="status-line"><span class="badge ${esc(c.status)}">${statusTitle(c.status)}</span><span class="pill">${sessionNumberBadge(c)}</span></div><div class="detail-grid" style="margin-top:24px">${info('المدعي',c.plaintiffs)}${info('المدعى عليه',c.defendants)}${info('موضوع الدعوى',c.claim_summary,true)}${c.previous_date?info('تاريخ الجلسة الأخيرة',hijriLong(c.previous_date),true):''}${judge?`<div class="detail-field detail-wide summary-card"><small>معاينة مختصرة آلية من الضبط الأصلي</small><p>${esc(m.overview)}</p>${m.evidence?`<small class="summary-label">عبارة ورود رفع الجلسة في المحضر</small><p class="quote-text">${esc(m.evidence)}</p>`:''}<small class="summary-note">هذا استخراج نصي أولي غير معتمد، وقد لا يوضح سبب الرفع بدقة. راجع الأصل دائمًا.</small></div><div class="detail-field detail-wide"><button class="btn btn-soft" data-action="toggle-source">${state.showSource?'إخفاء':'عرض'} ضبط الجلسة السابقة كاملًا</button>${state.showSource?`<div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div>`:''}</div>`:`<div class="detail-field detail-wide"><small>الضبط الأصلي كاملًا</small><div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div></div>`}${outcomeEditor(c)}${judge?preparationPanel():''}<div class="detail-field detail-wide"><small>آخر تحديث</small><p>${stamp(c.updated_at)} • ${esc(profileName(c.updated_by||c.created_by))}</p></div></div></div><div class="modal-foot"><button class="btn" data-action="close-detail">إغلاق</button><button class="btn btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button>${isJudge()&&c.status!=='approved'?`<button class="btn btn-primary" data-approve="${esc(c.id)}">✓ اعتماد البيانات</button>`:''}</div></div></div>`;
 }
 function initialTask(){return {title:'',category:'case',case_number:'',details:'',due_date:'',priority:'normal',status:'open'};}
 function taskCardMini(t){return `<div class="mini-task"><span class="priority-dot ${esc(t.priority)}"></span><div><b>${esc(short(t.title,62))}</b><small>${esc(taskCategories[t.category]||'أخرى')} ${t.case_number?' · '+esc(t.case_number):''} · بواسطة ${esc(profileName(t.created_by))}</small></div>${isJudge()?`<button class="mini-check" title="تم الإنجاز" data-task-toggle="${esc(t.id)}">✓</button>`:''}</div>`;}
@@ -1268,22 +1298,33 @@ async function saveCase(status='ready'){
 async function approveCase(id){if(!isJudge())return;const c=state.cases.find(x=>x.id===id);if(!c)return;if(Object.keys(caseErrors(c,id,{checkDuplicate:false,checkWindow:false})).length){openEditor(id);focusCaseField(showCaseErrors($('#case-form'),caseErrors(state.form,id)));return;}if(!window.confirm('هل راجعت بيانات القضية والضبط الأصلي قبل الاعتماد؟'))return;if(DEMO){c.status='approved';c.approved_by=actorId();c.updated_at=new Date().toISOString();state.reportApprovals=state.reportApprovals.filter(r=>r.session_date!==c.session_date);demoEvent(`${state.profile.display_name} اعتمد القضية ${c.case_number}`);closeModal();return;}const {error}=await state.client.from('cases').update({status:'approved',approved_by:state.user.id,updated_by:state.user.id}).eq('id',id);if(error)return notify(error.message==='case_waiting_for_submission'?'القضية لم تُرسل للقاضي بعد.':'فشل الاعتماد: '+error.message,'error');notify('تم اعتماد بيانات القضية','success');closeModal();await loadAll();}
 async function softDeleteCase(){const id=state.editorId;if(id==='new')return;if(!window.confirm('هل تريد إزالة هذه القضية من الجدول؟ ستبقى نسخة في سجل المراجعات.'))return;if(DEMO){const c=state.cases.find(x=>x.id===id);state.cases=state.cases.filter(x=>x.id!==id);state.reportApprovals=state.reportApprovals.filter(r=>r.session_date!==c?.session_date);demoEvent(`${state.profile.display_name} أزال القضية ${c?.case_number||''}`);notify('أُزيلت القضية من المعاينة.','success');closeModal();return;}const {error}=await state.client.from('cases').update({deleted_at:new Date().toISOString(),updated_by:state.user.id}).eq('id',id);if(error)return notify(error.message,'error');notify('أُزيلت القضية من العرض.','success');closeModal();await loadAll();}
 async function loadProfile(){const {data,error}=await state.client.from('profiles').select('*').eq('id',state.user.id).maybeSingle();if(error)throw error;state.profile=data||null;}
+async function loadSessionOutcomes(){
+ const rows=[];
+ const pageSize=500;
+ for(let start=0;;start+=pageSize){
+  const {data,error}=await state.client.from('session_outcomes').select('case_key,hearing_date,outcome,is_result').order('case_key').order('hearing_date').range(start,start+pageSize-1);
+  if(error){console.warn('Session outcomes:',error.code);return null;}
+  rows.push(...data);
+  if(data.length<pageSize)return rows;
+ }
+}
 let lastDataSnapshot = '';
 let loadSequence = 0;
 async function loadAll({background=false}={}){if(DEMO){render();return;}if(!state.profile?.is_active)return;
  const userId=state.user.id;
  const sequence=++loadSequence;
- const [cases,notifications,profiles,tasks,reports]=await Promise.all([
+ const [cases,notifications,profiles,tasks,reports,outcomes]=await Promise.all([
   state.client.from('cases').select('*').is('deleted_at',null).order('session_date',{ascending:true}),
   state.client.from('notifications').select('*').order('created_at',{ascending:false}).limit(90),
   state.client.from('profiles').select('id,display_name,role').eq('is_active',true),
   state.client.from('tasks').select('*').is('deleted_at',null).order('created_at',{ascending:false}),
-  state.client.from('report_approvals').select('*')]);
+  state.client.from('report_approvals').select('*'),loadSessionOutcomes()]);
  if(state.user?.id!==userId||sequence!==loadSequence)return;
- const snapshot=JSON.stringify([cases.data,notifications.data,profiles.data,tasks.data,reports.data]);
+ const snapshot=JSON.stringify([cases.data,notifications.data,profiles.data,tasks.data,reports.data,outcomes]);
  const changed=snapshot!==lastDataSnapshot;
  lastDataSnapshot=snapshot;
  if(background&&!changed)return;
+ if(outcomes)sessionOutcomes=new Map(outcomes.map(item=>[outcomeKey(item.case_key,item.hearing_date),item]));
  if(cases.error)notify('تعذّر تحديث القضايا: '+cases.error.message,'error');else state.cases=cases.data||[];
  if(tasks.error)notify('تعذّر تحديث المهام: '+tasks.error.message,'error');else state.tasks=tasks.data||[];
  if(reports.error)console.warn('Report approvals:',reports.error);else state.reportApprovals=reports.data||[];
@@ -1292,7 +1333,9 @@ async function loadAll({background=false}={}){if(DEMO){render();return;}if(!stat
   if(!state.initialNotifLoad){for(const x of next){if(x.kind!=='submitted'&&x.kind!=='task_created'&&!oldIds.has(x.id)&&!x.read_at&&'Notification' in window && Notification.permission==='granted'&&document.visibilityState==='hidden'){try{new Notification('تنظيم أعمال الدائرة الرابعة',{body:'لديك إشعار جديد. افتح الموقع للاطلاع عليه.',icon:'assets/favicon.svg'});}catch{}}}}
   state.notifications=next;state.initialNotifLoad=false;
  }
- if(!profiles.error)state.profiles=profiles.data||[];if(!background||(!state.form&&!bulkEntry))render();}
+ if(!profiles.error)state.profiles=profiles.data||[];
+ if(!background||(!state.form&&!bulkEntry&&!document.activeElement?.closest('#session-outcome-form')))render();
+}
 async function refreshProfile(){try{await loadProfile();render();if(state.profile?.is_active){await loadAll();subscribeChanges();registerPushWorker();openNotificationLink();}}catch(e){notify(e.message,'error');}}
 async function init(){if(DEMO){
   // إزالة جميع بيانات المعاينة القديمة مرة واحدة بعد الترقية.
@@ -1354,7 +1397,7 @@ document.addEventListener('focusout',e=>{
   if(group.isConnected&&!group.contains(document.activeElement))reorderBulkRows();
  },0);
 });
-document.addEventListener('submit',e=>{if(e.target.id==='account-login-form'){e.preventDefault();void loginAccount(e.target);return;}if(e.target.id==='judge-preparation'){e.preventDefault();void saveCasePreparation();return;}if(e.target.id==='bulk-case-form'){e.preventDefault();void saveBulkEntry();}if(e.target.id==='case-form'){e.preventDefault();saveCase('ready');}if(e.target.id==='task-form'){e.preventDefault();saveTask();}});
+document.addEventListener('submit',e=>{if(e.target.id==='account-login-form'){e.preventDefault();void loginAccount(e.target);return;}if(e.target.id==='session-outcome-form'){e.preventDefault();void saveSessionOutcome(e.target);return;}if(e.target.id==='judge-preparation'){e.preventDefault();void saveCasePreparation();return;}if(e.target.id==='bulk-case-form'){e.preventDefault();void saveBulkEntry();}if(e.target.id==='case-form'){e.preventDefault();saveCase('ready');}if(e.target.id==='task-form'){e.preventDefault();saveTask();}});
 let hearingsContainer;
 let hearingsMount;
 function showHearings(){
@@ -1367,7 +1410,7 @@ function showHearings(){
  }
  slot.append(hearingsContainer);
  if(hearingsMount)return;
- hearingsMount=import('./assets/hearings/main.js?v=5.0.24').then(module=>{
+ hearingsMount=import('./assets/hearings/main.js?v=5.0.25').then(module=>{
   module.mount(hearingsContainer,{
    getToken:async()=>state.client?(await state.client.auth.getSession()).data.session?.access_token??null:null,
    subscribe:listener=>{

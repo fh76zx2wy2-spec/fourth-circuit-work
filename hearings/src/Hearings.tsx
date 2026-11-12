@@ -9,7 +9,7 @@ import {
 } from "@/lib/schedule";
 import {
   type HistoryData, type DayRecord,
-  blankDay, normalizeDay, isDate, dayIsFinal, historicalDays,
+  blankDay, normalizeDay, isDate, dayIsFinal,
   distributeFairly, assignAdditionalFairly, hasAssignmentSpacingConflict,
 } from "@/lib/history";
 import { isSaudiWorkday } from "@/lib/domain";
@@ -69,13 +69,9 @@ export function Index() {
   const balanced = vals.length ? Math.max(...vals) - Math.min(...vals) <= 1 : false;
   const spacingConflict = distributed && hasAssignmentSpacingConflict(hearings.map(hearing => hearing.clerk).filter((name): name is string => Boolean(name)));
   const workday = isSaudiWorkday(date);
-  const totalDays = useMemo(() => historicalDays(data.days), [data.days]);
-  const pastDates = useMemo(() => {
-    return Object.entries(data.days).filter(([d, record]) => {
-      if (!dayIsFinal(record)) return false;
-      return historySearch ? d === historySearch : true;
-    }).sort(([a], [b]) => b.localeCompare(a));
-  }, [data.days, historySearch]);
+  const savedDates = useMemo(() => Object.keys(versions).sort((a, b) => b.localeCompare(a)), [versions]);
+  const totalDays = savedDates.length;
+  const pastDates = savedDates.filter(d => !historySearch || d === historySearch);
 
   function updateDay(callback: (value: DayRecord) => DayRecord) {
     setData(prev => {
@@ -427,17 +423,18 @@ export function Index() {
                   <label className="flex items-center gap-2 text-sm font-medium"><Search className="size-4 text-gold" /> ابحث بالتاريخ</label>
                   <input type="date" lang="en-US" aria-label="البحث في سجل الأيام بالتاريخ الميلادي" value={historySearch}
                     onChange={e => setHistorySearch(e.target.value)} className="h-11 rounded-xl border border-input bg-card px-3 text-sm min-w-0" />
-                  {historySearch && <button type="button" onClick={() => setHistorySearch("")} className="text-sm text-primary underline">إظهار كل السجلات</button>}
+                  <button type="button" onClick={() => setHistorySearch("")} className="text-sm text-primary underline">إظهار كل السجلات</button>
                 </div>
                 <div className="mt-3 max-h-72 overflow-y-auto space-y-2" aria-label="نتائج البحث">
                   {pastDates.length === 0 ? (
-                    <p className="text-sm text-muted-foreground p-3 rounded-xl bg-muted/50">لا توجد جلسات محفوظة للتاريخ المحدد.</p>
-                  ) : pastDates.map(([d, record]) => {
+                    <p className="text-sm text-muted-foreground p-3 rounded-xl bg-muted/50">{historySearch ? "لا توجد جلسات محفوظة للتاريخ المحدد." : "لا توجد سجلات محفوظة."}</p>
+                  ) : pastDates.map(d => {
+                    const record = data.days[d];
                     const f = formatDates(d);
                     return (
                       <div key={d} className="flex items-center gap-2 justify-between rounded-xl border border-border p-3">
                         <div className="min-w-0 text-sm"><b className="block text-primary">{f.weekday}، {f.greg}</b>
-                          <span className="text-xs text-muted-foreground">{f.hijri} · {record.hearings.length} جلسة</span>
+                          <span className="text-xs text-muted-foreground">{f.hijri} · {record?.hearings.length ?? 0} جلسة</span>
                         </div>
                         <div className="flex gap-2 shrink-0">
                           <button type="button" onClick={() => selectDate(d)} className="rounded-lg bg-primary text-primary-foreground px-3 py-2 text-sm">عرض</button>

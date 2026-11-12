@@ -80,17 +80,22 @@ export async function loadHistory(): Promise<{
   statuses: Record<string, "draft" | "approved">;
   creators: Record<string, string>;
 }> {
-  const { data, error } = await client()
-    .from("hearing_days")
-    .select(
-      `
-    id,hearing_date,status,version,created_by,
-    hearings(id,position,starts_at,ends_at,status,original:employees!hearings_original_assignee_id_fkey(name),actual:employees!hearings_actual_assignee_id_fkey(name)),
-    day_absences(employee:employees(name))
-  `,
-    )
-    .order("hearing_date", { ascending: true });
-  if (error) throw error;
+  const data = [];
+  const pageSize = 100;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data: page, error } = await client()
+      .from("hearing_days")
+      .select(`
+        id,hearing_date,status,version,created_by,
+        hearings(id,position,starts_at,ends_at,status,original:employees!hearings_original_assignee_id_fkey(name),actual:employees!hearings_actual_assignee_id_fkey(name)),
+        day_absences(employee:employees(name))
+      `)
+      .order("hearing_date", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    data.push(...page);
+    if (page.length < pageSize) break;
+  }
   const creatorIds = [
     ...new Set((data ?? []).map((row: any) => row.created_by as string).filter(Boolean)),
   ];
@@ -100,7 +105,7 @@ export async function loadHistory(): Promise<{
       .from("profiles")
       .select("user_id,display_name")
       .in("user_id", creatorIds);
-    if (creatorError) throw creatorError;
+    if (creatorError) console.warn("Hearing record creator names unavailable", creatorError.code);
     for (const creator of creatorProfiles ?? []) {
       creatorNames.set(creator.user_id, creator.display_name);
     }
