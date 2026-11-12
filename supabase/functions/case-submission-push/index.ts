@@ -79,7 +79,14 @@ Deno.serve(async (request) => {
   await Promise.all(data.jobs.map(async ({ deliveryId, id, taskId, sender, attempt, subscription }) => {
     let result = 'sent';
     try {
-      const payload = taskId ? { taskId, sender } : { id };
+      let payload: Record<string, unknown> = taskId ? { taskId, sender } : { id };
+      if (id && !taskId) {
+        const { data: batch, error: batchError } = await client.from('case_submissions')
+          .select('actor_name,added_count,edited_count').eq('id', id).single();
+        if (batchError) return;
+        payload = { id, sender: batch.actor_name.startsWith('يحيى ') ? 'يحيى' : 'عبد الرحمن',
+          added: batch.added_count, edited: batch.edited_count };
+      }
       const eventId = taskId || id;
       await webpush.sendNotification(subscription, JSON.stringify(payload), pushOptions(data.vapid, eventId));
     } catch (error) {
