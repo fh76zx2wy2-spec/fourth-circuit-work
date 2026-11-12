@@ -231,3 +231,11 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 
 .copy-case-number{display:inline;padding:0;border:0;background:none;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:.15em;cursor:pointer}
 .copy-case-number[data-copy-case-field]{margin-top:.25rem;font-size:.8rem}
+
+.case-time-slot{display:grid;gap:6px;justify-items:stretch}
+.case-time-slot input,.case-approval-actions input{accent-color:var(--primary);width:18px;height:18px;margin:0}
+.case-time-slot input{justify-self:center}
+.case-approval{margin:0 0 12px}
+.case-approval-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.case-approval-actions label{display:inline-flex;align-items:center;gap:6px;padding:8px;cursor:pointer}
+.case-approval ul{margin:4px 0;padding-inline-start:22px}
