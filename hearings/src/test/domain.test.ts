@@ -52,32 +52,45 @@ describe("fairness and apologies", () => {
     expect(counts[khalid]).toBeLessThanOrEqual(counts[mater]!);
   });
 
-  it("keeps Khalid and Yahya separated and limits other blocks to two", () => {
-    const draw = distributeFairly(12, [...CLERKS], {}, "2026-10-25", () => 0.5);
-    expect(hasAssignmentSpacingConflict(draw)).toBe(false);
-    expect(draw.some((name, index) => index > 0 && name === draw[index - 1] && !(name === khalid || name === yahya))).toBe(true);
-    for (let i = 1; i < draw.length; i++) {
-      if ((draw[i] === khalid || draw[i] === yahya)) expect(draw[i]).not.toBe(draw[i - 1]);
-      if (i > 1) expect([draw[i - 2], draw[i - 1], draw[i]]).not.toEqual([draw[i], draw[i], draw[i]]);
-    }
-  });
-
-  it("keeps the strict spacing rules with more than fifteen hearings", () => {
+  it("keeps each grouped clerk in one block when their quota is at most four", () => {
     const draw = distributeFairly(20, [...CLERKS], {}, "2026-10-25", () => 0.5);
-    expect(hasAssignmentSpacingConflict(draw)).toBe(false);
+    for (const clerk of [musa, mohammed, mater]) {
+      expect(draw.slice(draw.indexOf(clerk), draw.indexOf(clerk) + 4)).toEqual(Array(4).fill(clerk));
+    }
+    expect(distributeFairly(6, [khalid], {}, "2026-10-25")).toEqual(Array(6).fill(khalid));
+    expect(hasAssignmentSpacingConflict(Array(6).fill(khalid))).toBe(false);
   });
 
-  it("keeps the spacing preferences for every supported daily count", () => {
-    for (let count = 1; count <= 60; count++) {
-      const draw = distributeFairly(count, [...CLERKS], {}, "2026-10-25", () => 0.5);
-      expect(draw).toHaveLength(count);
-      expect(hasAssignmentSpacingConflict(draw)).toBe(false);
+  it("uses a single intervening hearing between blocks when flexible clerks are present", () => {
+    const draw = distributeFairly(60, [...CLERKS], {}, "2026-10-25", () => 0.5);
+    for (const clerk of [musa, mohammed, mater]) {
+      expect(draw.lastIndexOf(clerk) - draw.indexOf(clerk) + 1).toBe(14);
     }
   });
 
-  it("reports when strict separation is mathematically impossible", () => {
-    const draw = distributeFairly(3, [khalid], {}, "2026-10-25", () => 0.5);
-    expect(hasAssignmentSpacingConflict(draw)).toBe(true);
+  it("preserves fair quotas and feasible spacing at every count and attendance combination", () => {
+    for (let mask = 1; mask < 2 ** CLERKS.length; mask++) {
+      const active = CLERKS.filter((_, index) => mask & (1 << index));
+      for (let count = 1; count <= 60; count++) {
+        const draw = distributeFairly(count, active, {}, "2026-10-25", () => 0.5);
+        expect(draw).toHaveLength(count);
+        expect(draw.every(name => active.includes(name as typeof CLERKS[number]))).toBe(true);
+        for (const clerk of active) {
+          const quota = draw.filter(name => name === clerk).length;
+          expect(quota).toBeGreaterThanOrEqual(Math.floor(count / active.length));
+          expect(quota).toBeLessThanOrEqual(Math.ceil(count / active.length));
+        }
+        const impossible = active.length === 1 && active[0] !== khalid && active[0] !== yahya && count > 4;
+        expect(hasAssignmentSpacingConflict(draw)).toBe(impossible);
+      }
+    }
+  });
+
+  it("still assigns the extra hearing to the least-served employee in the same week", () => {
+    const active = [musa, mohammed];
+    const past = { hearings: [{ id: "1", h: 8, m: 0, clerk: musa }], active, distributed: true };
+    const draw = distributeFairly(5, active, { "2026-10-25": past }, "2026-10-26", () => 0.5);
+    expect(draw.filter(clerk => clerk === mohammed)).toHaveLength(3);
   });
 
   it("counts a partial apology once and keeps the employee present", () => {

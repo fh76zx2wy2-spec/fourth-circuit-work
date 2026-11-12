@@ -21,58 +21,65 @@ function violatesSpacing(sequence: string[], candidate: string): boolean {
   return sequence.at(-2) === candidate;
 }
 
-/** Khalid and Yahya never touch; the other clerks may have blocks of at most two. */
+const MAX_GROUP_SIZE = 4;
+
 export function hasAssignmentSpacingConflict(sequence: string[]): boolean {
-  return sequence.some((candidate, index) => violatesSpacing(sequence.slice(0, index), candidate));
+  return sequence.some((name, index) =>
+    !separatedClerks.has(name) && index >= MAX_GROUP_SIZE &&
+    sequence.slice(index - MAX_GROUP_SIZE, index).every(previous => previous === name),
+  );
 }
 
-function arrangeBySpacing(
-  preference: string[], remaining: Map<string, number>, total: number, rng: () => number,
-): string[] | null {
-  const output: string[] = [];
-  const failed = new Set<string>();
-  const lastSeen = new Map<string, number>();
-
-  function visit(): boolean {
-    if (output.length === total) return true;
-    const previous = output.at(-1);
-    const runLength = previous && output.at(-2) === previous ? 2 : previous ? 1 : 0;
-    const key = `${preference.map(name => remaining.get(name) ?? 0).join(",")}|${previous ?? ""}|${runLength}`;
-    if (failed.has(key)) return false;
-
-    const randomized = shuffle(preference.filter(name => (remaining.get(name) ?? 0) > 0), rng);
-    const candidates = randomized
-      .filter(name => !violatesSpacing(output, name))
-      .sort((a, b) => {
-        const pairBonus = total <= 15 ? 100 : 25;
-        const score = (name: string) => {
-          if (separatedClerks.has(name)) {
-            const distance = lastSeen.has(name) ? output.length - lastSeen.get(name)! : total;
-            return Math.min(distance, total);
-          }
-          const closesPair = previous === name ? pairBonus : 0;
-          const startsUsefulPair = previous !== name && (remaining.get(name) ?? 0) >= 2 ? 20 : 0;
-          const distance = lastSeen.has(name) ? output.length - lastSeen.get(name)! : total;
-          return closesPair + startsUsefulPair + Math.max(0, 12 - distance);
-        };
-        return score(b) - score(a);
-      });
-
-    for (const candidate of candidates) {
-      const oldLastSeen = lastSeen.get(candidate);
-      output.push(candidate);
-      lastSeen.set(candidate, output.length - 1);
-      remaining.set(candidate, (remaining.get(candidate) ?? 0) - 1);
-      if (visit()) return true;
-      remaining.set(candidate, (remaining.get(candidate) ?? 0) + 1);
-      output.pop();
-      if (oldLastSeen === undefined) lastSeen.delete(candidate); else lastSeen.set(candidate, oldLastSeen);
+function arrangeGroupedHearings(quotas: Map<string, number>, rng: () => number): string[] | null {
+  const flexible: string[] = [];
+  const blocks = new Map<string, number[]>();
+  for (const [name, count] of quotas) {
+    if (separatedClerks.has(name)) {
+      flexible.push(...Array<string>(count).fill(name));
+    } else if (count > 0) {
+      blocks.set(name, Array.from({ length: Math.ceil(count / MAX_GROUP_SIZE) }, (_, index) =>
+        Math.min(MAX_GROUP_SIZE, count - index * MAX_GROUP_SIZE),
+      ));
     }
-    failed.add(key);
-    return false;
   }
 
-  return visit() ? output : null;
+  const separators = shuffle(flexible, rng);
+  const order = [...shuffle([...blocks.keys()], rng), null];
+  const output: string[] = [];
+  let previous: string | null = null;
+  let resume: string | null = null;
+
+  const remainingBlocks = (name: string | null) =>
+    name === null ? separators.length : blocks.get(name)!.length;
+
+  while ([...blocks.values()].some(group => group.length > 0)) {
+    const total = order.reduce((sum, name) => sum + remainingBlocks(name), 0);
+    // Leave enough other blocks to separate each clerk's remaining blocks.
+    const choices = order.filter(candidate =>
+      remainingBlocks(candidate) > 0 && (candidate === null || candidate !== previous) &&
+      order.every(name => {
+        if (name === null) return true;
+        const left = remainingBlocks(name) - Number(name === candidate);
+        return left <= total - 1 - left + Number(name !== candidate);
+      }),
+    );
+    if (!choices.length) return null;
+
+    // Prefer a single flexible hearing between blocks of the same clerk.
+    const needsSeparator = previous !== null && remainingBlocks(previous) > 0;
+    const chosen = choices.includes(resume) && resume !== null ? resume
+      : needsSeparator && choices.includes(null) ? null
+      : choices[0]!;
+    if (chosen === null) {
+      output.push(separators.pop()!);
+    } else {
+      output.push(...Array<string>(blocks.get(chosen)!.shift()!).fill(chosen));
+    }
+    resume = needsSeparator ? previous : null;
+    previous = chosen;
+  }
+  const prefixCount = Math.floor(rng() * (separators.length + 1));
+  return [...separators.slice(0, prefixCount), ...output, ...separators.slice(prefixCount)];
 }
 export const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(`${s}T12:00:00Z`)) && new Date(`${s}T12:00:00Z`).toISOString().startsWith(s);
 
@@ -189,7 +196,7 @@ export function distributeFairly(
   for (let i = 0; i < preference.length; i++) {
     remaining.set(preference[i]!, base + (i < surplus ? 1 : 0));
   }
-  const arranged = arrangeBySpacing(preference, remaining, n, rng);
+  const arranged = arrangeGroupedHearings(remaining, rng);
   if (arranged) return arranged;
 
   // A strict layout can be impossible when too few employees are present.

@@ -1186,7 +1186,7 @@ function showHearings(){
  }
  slot.append(hearingsContainer);
  if(hearingsMount)return;
- hearingsMount=import('./assets/hearings/main.js?v=5.0.18').then(module=>{
+ hearingsMount=import('./assets/hearings/main.js?v=5.0.19').then(module=>{
   module.mount(hearingsContainer,{
    getToken:async()=>state.client?(await state.client.auth.getSession()).data.session?.access_token??null:null,
    subscribe:listener=>{
