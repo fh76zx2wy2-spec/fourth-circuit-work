@@ -17,11 +17,11 @@ async function authorize(token: string) {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
   const { data: { user }, error } = await main.auth.getUser(token);
-  if (error || !user) return null;
-  const { data: device } = await main.from("profiles").select("id,is_active")
+  if (error || !user || user.is_anonymous) return null;
+  const { data: account } = await main.from("profiles").select("id,is_active")
     .eq("id", user.id).eq("is_active", true).maybeSingle();
-  if (!device) return null;
-  const { data: mapped, error: mappingError } = await admin.rpc("get_hearings_identity", { device_id: user.id });
+  if (!account) return null;
+  const { data: mapped, error: mappingError } = await admin.rpc("get_hearings_account", { account_id: user.id });
   if (mappingError) throw mappingError;
   if (!mapped) return null;
   const { data: profile, error: profileError } = await admin.from("profiles")

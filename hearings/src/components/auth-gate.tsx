@@ -24,7 +24,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   return (
     <div className="auth-panel">
       <h1>توزيع الجلسات</h1>
-      <p role="alert">يلزم الدخول من جهاز معتمد ومرتبط بحساب توزيع الجلسات.</p>
+      <p role="alert">تعذّر فتح توزيع الجلسات بهذا الحساب. حدّث الصفحة ثم أعد المحاولة.</p>
     </div>
   );
 }

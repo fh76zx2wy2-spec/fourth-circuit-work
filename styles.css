@@ -246,3 +246,7 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .session-number-middle{--session-color:#c38908}
 .session-number-late{--session-color:#d33b38}
 .session-number-extended{--session-color:#841d32}
+
+.account-card{max-width:28rem}
+.account-card h1{margin:0 0 1rem;font-size:1.55rem}
+.account-card form>.btn{width:100%;margin-top:1rem}
