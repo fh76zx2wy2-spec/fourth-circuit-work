@@ -239,10 +239,12 @@ export function Index() {
 
   // Export (the original image design stays intact).
   const cardRef = useRef<HTMLDivElement>(null);
-  const [busy, setBusy] = useState<"" | "save">("");
+  const [busy, setBusy] = useState<"" | "save" | "share">("");
+  const [preparedShare, setPreparedShare] = useState<{ day: DayRecord; date: string; file: File } | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const filename = `توزيع-جلسات-الدائرة-الرابعة-${date}.png`;
-  const canManageHearings = profile?.role === "admin";
+  const canManageHearings = remoteReady && (profile?.role === "admin" || profile?.can_approve === true);
+  const shareReady = preparedShare?.day === day && preparedShare.date === date;
 
   async function renderPng(): Promise<Blob> {
     const node = cardRef.current;
@@ -255,18 +257,48 @@ export function Index() {
     if (!blob) throw new Error("empty");
     return blob;
   }
+  function downloadImage(blob: Blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
   async function save() {
     setBusy("save"); setMsg(null);
     try {
       await saveRemote(statuses[date] ?? "draft");
-      const blob = await renderPng();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      downloadImage(await renderPng());
       setMsg({ ok: true, text: "تم حفظ الصورة بنجاح." });
     } catch {
-      setMsg({ ok: false, text: "تعذّر حفظ البيانات أو إنشاء الصورة. لم يُعرض نجاح لأن العملية لم تكتمل." });
+      setMsg({ ok: false, text: "تعذّر حفظ البيانات أو إنشاء الصورة." });
+    } finally { setBusy(""); }
+  }
+  async function shareDistribution() {
+    if (!canManageHearings || !ready || busy) return;
+    if (shareReady) {
+      try {
+        await navigator.share({ files: [preparedShare.file], title: "توزيع جلسات الدائرة الرابعة" });
+      } catch (error) {
+        if (!(error instanceof Error && error.name === "AbortError")) {
+          downloadImage(preparedShare.file);
+          setMsg({ ok: true, text: "حُفظت الصورة لإرسالها من تطبيق المراسلة." });
+        }
+      }
+      return;
+    }
+    setBusy("share");
+    try {
+      await saveRemote("approved");
+      const file = new File([await renderPng()], filename, { type: "image/png" });
+      if (typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
+        setPreparedShare({ day, date, file });
+        setMsg({ ok: true, text: "اعتُمد التوزيع. اضغط «إرسال الصورة» لاختيار المستلمين." });
+      } else {
+        downloadImage(file);
+        setMsg({ ok: true, text: "اعتُمد التوزيع وحُفظت صورته لإرسالها من تطبيق المراسلة." });
+      }
+    } catch {
+      setMsg({ ok: false, text: "تعذّر اعتماد التوزيع أو إعداد صورته للإرسال." });
     } finally { setBusy(""); }
   }
   return (
@@ -406,7 +438,7 @@ export function Index() {
           {storageWarning && <Alert tone="error">تعذّر تحميل بيانات توزيع الجلسات. لا تعتمد التعديل قبل عودة الاتصال ونجاح الحفظ.</Alert>}
 
           <div className="hidden lg:flex flex-wrap gap-3">
-            <Actions {...{ distributed, ready, busy, draw, save, saveData: saveRemote, canApprove: profile?.role === "admin" || profile?.can_approve === true, disabled: !hearings.length || !active.length || !remoteReady || !workday }} />
+            <Actions {...{ distributed, ready, busy, draw, save, saveData: saveRemote, canApprove: canManageHearings, share: shareDistribution, shareReady, disabled: !hearings.length || !active.length || !remoteReady || !workday }} />
           </div>
           {msg && <Alert tone={msg.ok ? "ok" : "error"}>{msg.text}</Alert>}
 
@@ -483,7 +515,7 @@ export function Index() {
       </main>
 
       <div className="lg:hidden fixed inset-x-0 bottom-[calc(71px+env(safe-area-inset-bottom))] z-20 border-t border-border bg-card/95 backdrop-blur p-3 grid grid-cols-2 gap-2">
-        <Actions {...{ distributed, ready, busy, draw, save, saveData: saveRemote, canApprove: profile?.role === "admin" || profile?.can_approve === true, disabled: !hearings.length || !active.length || !remoteReady || !workday }} compact />
+        <Actions {...{ distributed, ready, busy, draw, save, saveData: saveRemote, canApprove: canManageHearings, share: shareDistribution, shareReady, disabled: !hearings.length || !active.length || !remoteReady || !workday }} compact />
       </div>
       {confirmRedistribution && <div className="fixed inset-0 z-50 grid place-items-center bg-navy-deep/60 p-4" role="dialog" aria-modal="true" aria-label="تأكيد إعادة التوزيع"><div className="w-full max-w-sm rounded-2xl bg-card p-5 text-center shadow-xl"><AlertTriangle className="mx-auto size-11 text-warning" /><h2 className="mt-3 text-base font-bold text-primary">هل أنت متأكد من إعادة التوزيع؟</h2><p className="mt-2 text-sm text-muted-foreground">سيُعاد توزيع جميع جلسات اليوم من جديد.</p><div className="mt-5 grid grid-cols-2 gap-2"><button type="button" onClick={() => { setConfirmRedistribution(false); performDraw(); }} className="rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">نعم، أعد التوزيع</button><button type="button" onClick={() => setConfirmRedistribution(false)} className="rounded-xl border border-border px-4 py-2 text-sm">إلغاء</button></div></div></div>}
       {swapTarget && <div className="fixed inset-0 z-50 grid place-items-center bg-navy-deep/60 p-4" role="dialog" aria-modal="true" aria-label="اعتذار أو تبديل"><div className="w-full max-w-md rounded-2xl bg-card p-5 shadow-xl"><h2 className="text-lg font-bold text-primary">اعتذار / تبديل</h2><p className="mt-1 text-sm text-muted-foreground">الموظف الأصلي: {swapTarget.originalClerk ?? swapTarget.clerk}</p><label className="mt-4 block text-sm font-medium">الموظف البديل<select value={replacement} onChange={e => { setReplacement(e.target.value); setSwapError(""); }} className="mt-1 h-11 w-full rounded-xl border border-input bg-card px-3"><option value="">اختر البديل</option>{active.filter(name => name !== (swapTarget.originalClerk ?? swapTarget.clerk)).map(name => <option key={name}>{name}</option>)}</select></label><label className="mt-3 block text-sm font-medium">السبب (اختياري)<input value={swapReason} onChange={e => setSwapReason(e.target.value.replace(/[٠-٩۰-۹]/g, digit => String(digit.charCodeAt(0) - (digit <= "٩" ? 0x660 : 0x6f0))))} maxLength={500} className="mt-1 h-11 w-full rounded-xl border border-input bg-card px-3" /></label>{!workday && <p className="mt-3 text-sm text-warning">الجمعة والسبت خارج أيام عمل الدائرة؛ اختر تاريخ يوم عمل أولًا.</p>}{swapError && <p role="alert" className="mt-3 text-sm text-destructive">{swapError}</p>}<div className="mt-5 flex gap-2"><button type="button" disabled={!replacement || swapBusy || !workday} onClick={() => void submitSwap()} className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-primary-foreground disabled:opacity-40">{swapBusy && <Loader2 className="size-4 animate-spin" />}{swapBusy ? "جارٍ الحفظ..." : "حفظ"}</button><button type="button" disabled={swapBusy} onClick={() => setSwapTarget(null)} className="rounded-xl border border-border px-4 py-2 disabled:opacity-40">إلغاء</button></div></div></div>}
@@ -491,7 +523,7 @@ export function Index() {
   );
 }
 
-function Actions(p: { distributed: boolean; ready: boolean; busy: string; disabled: boolean; draw: () => void; save: () => void; saveData: (status?: "draft" | "approved") => Promise<void>; canApprove: boolean; compact?: boolean }) {
+function Actions(p: { distributed: boolean; ready: boolean; busy: string; disabled: boolean; draw: () => void; save: () => void; saveData: (status?: "draft" | "approved") => Promise<void>; canApprove: boolean; share: () => Promise<void>; shareReady: boolean; compact?: boolean }) {
   return (
     <>
       <button type="button" onClick={p.draw} disabled={p.disabled}
@@ -503,8 +535,12 @@ function Actions(p: { distributed: boolean; ready: boolean; busy: string; disabl
         {p.busy === "save" ? <Loader2 className="size-5 animate-spin" /> : <Download className="size-5" />}
         حفظ الصورة
       </button>
-      {p.canApprove && <button type="button" onClick={() => void p.saveData("approved").catch(() => {})} disabled={!p.ready || p.disabled}
+      {p.canApprove && <button type="button" onClick={() => void p.saveData("approved").catch(() => {})} disabled={!p.ready || p.disabled || !!p.busy}
         className="inline-flex items-center justify-center rounded-xl bg-success px-4 h-11 text-sm font-bold text-white shadow-card hover:brightness-105 disabled:opacity-40">اعتماد جلسات اليوم</button>}
+      {p.canApprove && <button type="button" onClick={() => void p.share()} disabled={!p.ready || p.disabled || !!p.busy}
+        className="inline-flex items-center justify-center rounded-xl border border-gold px-3 h-11 text-sm font-bold text-primary disabled:opacity-40">
+        {p.shareReady ? "إرسال الصورة" : "اعتماد وتجهيز الإرسال"}
+      </button>}
     </>
   );
 }
