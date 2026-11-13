@@ -14,11 +14,12 @@ export type HistoryData = { version: 2; selectedDate: string; days: Record<strin
 const knownClerks: readonly string[] = CLERKS;
 const separatedClerks = new Set<string>([CLERKS[1], CLERKS[4]]);
 
-function violatesSpacing(sequence: string[], candidate: string): boolean {
+function violatesSpacing(sequence: (string | null)[], candidate: string): boolean {
   const previous = sequence.at(-1);
   if (previous !== candidate) return false;
   if (separatedClerks.has(candidate)) return true;
-  return sequence.at(-2) === candidate;
+  const tail = sequence.slice(-MAX_GROUP_SIZE);
+  return tail.length === MAX_GROUP_SIZE && tail.every(name => name === candidate);
 }
 
 const MAX_GROUP_SIZE = 4;
@@ -30,56 +31,74 @@ export function hasAssignmentSpacingConflict(sequence: string[]): boolean {
   );
 }
 
-function arrangeGroupedHearings(quotas: Map<string, number>, rng: () => number): string[] | null {
-  const flexible: string[] = [];
-  const blocks = new Map<string, number[]>();
-  for (const [name, count] of quotas) {
-    if (separatedClerks.has(name)) {
-      flexible.push(...Array<string>(count).fill(name));
-    } else if (count > 0) {
-      blocks.set(name, Array.from({ length: Math.ceil(count / MAX_GROUP_SIZE) }, (_, index) =>
-        Math.min(MAX_GROUP_SIZE, count - index * MAX_GROUP_SIZE),
-      ));
+type Arrangement = {
+  order: number[];
+  remaining: number[];
+  last: number[];
+  run: number;
+  cost: number;
+};
+
+function separationCost(gap: number): number {
+  if (gap === 0) return 1500;
+  if (gap <= 3) return gap - 1;
+  return 8 + 28 * (gap - 4) ** 2;
+}
+
+function arrangeHearings(quotas: Map<string, number>, rng: () => number): string[] {
+  const names = shuffle([...quotas.keys()].filter(name => quotas.get(name)! > 0), rng);
+  const initial = names.map(name => quotas.get(name)!);
+  if (names.length <= 1) return Array<string>(initial[0] ?? 0).fill(names[0] ?? "");
+  const separated = names.map(name => separatedClerks.has(name));
+  const total = initial.reduce((sum, count) => sum + count, 0);
+  // Keep several promising partial layouts so choosing one clerk never commits the whole draw.
+  const beamWidth = 48;
+  let layouts: Arrangement[] = [{ order: [], remaining: initial, last: names.map(() => -1), run: 0, cost: 0 }];
+
+  for (let position = 0; position < total; position++) {
+    const next = new Map<string, { layout: Arrangement; rank: number }>();
+    for (const layout of layouts) {
+      const previous = layout.order.at(-1);
+      for (let i = 0; i < names.length; i++) {
+        if (!layout.remaining[i]) continue;
+        const run = previous === i ? layout.run + 1 : 1;
+        if (!separated[i] && run > MAX_GROUP_SIZE) continue;
+        const remaining = [...layout.remaining];
+        remaining[i] = remaining[i]! - 1;
+        // Preserve enough slots to break any remaining runs of grouped clerks.
+        const unplaced = total - position - 1;
+        if (remaining.some((count, j) => !separated[j] &&
+          count > MAX_GROUP_SIZE * (unplaced - count + 1) - (j === i ? run : 0))) continue;
+
+        const last = [...layout.last];
+        const gap = position - last[i]! - 1;
+        let cost = layout.cost;
+        if (last[i] !== -1) {
+          if (separated[i]) {
+            cost += separationCost(gap);
+          } else if (gap > 0) {
+            const breakCost = initial[i]! <= MAX_GROUP_SIZE ? 28 : 9;
+            cost += breakCost + 2 * gap ** 2 + 18 * Math.max(0, gap - 4) ** 2;
+          }
+        }
+        last[i] = position;
+        // Price open gaps as they grow so a good partial layout doesn't strand a clerk at the end.
+        const pending = remaining.reduce((sum, count, j) => {
+          if (!count || last[j] === -1) return sum;
+          const wait = position - last[j]!;
+          return sum + (separated[j] ? Math.max(0, wait - 2) ** 2 * 12 : wait ** 2 * 8);
+        }, 0);
+        const rank = cost + pending;
+        const key = `${remaining.join(",")}|${last.join(",")}|${run}`;
+        const existing = next.get(key);
+        if (!existing || rank < existing.rank) {
+          next.set(key, { layout: { order: [...layout.order, i], remaining, last, run, cost }, rank });
+        }
+      }
     }
+    layouts = [...next.values()].sort((a, b) => a.rank - b.rank).slice(0, beamWidth).map(entry => entry.layout);
   }
-
-  const separators = shuffle(flexible, rng);
-  const order = [...shuffle([...blocks.keys()], rng), null];
-  const output: string[] = [];
-  let previous: string | null = null;
-  let resume: string | null = null;
-
-  const remainingBlocks = (name: string | null) =>
-    name === null ? separators.length : blocks.get(name)!.length;
-
-  while ([...blocks.values()].some(group => group.length > 0)) {
-    const total = order.reduce((sum, name) => sum + remainingBlocks(name), 0);
-    // Leave enough other blocks to separate each clerk's remaining blocks.
-    const choices = order.filter(candidate =>
-      remainingBlocks(candidate) > 0 && (candidate === null || candidate !== previous) &&
-      order.every(name => {
-        if (name === null) return true;
-        const left = remainingBlocks(name) - Number(name === candidate);
-        return left <= total - 1 - left + Number(name !== candidate);
-      }),
-    );
-    if (!choices.length) return null;
-
-    // Prefer a single flexible hearing between blocks of the same clerk.
-    const needsSeparator = previous !== null && remainingBlocks(previous) > 0;
-    const chosen = choices.includes(resume) && resume !== null ? resume
-      : needsSeparator && choices.includes(null) ? null
-      : choices[0]!;
-    if (chosen === null) {
-      output.push(separators.pop()!);
-    } else {
-      output.push(...Array<string>(blocks.get(chosen)!.shift()!).fill(chosen));
-    }
-    resume = needsSeparator ? previous : null;
-    previous = chosen;
-  }
-  const prefixCount = Math.floor(rng() * (separators.length + 1));
-  return [...separators.slice(0, prefixCount), ...output, ...separators.slice(prefixCount)];
+  return layouts[0]!.order.map(index => names[index]!);
 }
 export const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(`${s}T12:00:00Z`)) && new Date(`${s}T12:00:00Z`).toISOString().startsWith(s);
 
@@ -196,15 +215,7 @@ export function distributeFairly(
   for (let i = 0; i < preference.length; i++) {
     remaining.set(preference[i]!, base + (i < surplus ? 1 : 0));
   }
-  const arranged = arrangeGroupedHearings(remaining, rng);
-  if (arranged) return arranged;
-
-  // A strict layout can be impossible when too few employees are present.
-  const fallback: string[] = [];
-  for (const name of preference) {
-    for (let i = 0; i < (remaining.get(name) ?? 0); i++) fallback.push(name);
-  }
-  return fallback;
+  return arrangeHearings(remaining, rng);
 }
 
 /** Assign only newly added hearings without changing the existing distribution. */
@@ -217,17 +228,21 @@ export function assignAdditionalFairly(
   const previousDebt = historicalDebt(days, date);
   const todayCounts = countBy(existing, unique);
   const result: string[] = [];
+  const priorAssignments = existing.map(item => item.clerk);
   for (let i = 0; i < count; i++) {
-    const sequence = [...existing.map(item => item.clerk).filter((name): name is string => Boolean(name)), ...result];
+    const sequence = [...priorAssignments, ...result];
     const valid = unique.filter(name => !violatesSpacing(sequence, name));
     const candidates = shuffle(valid.length ? valid : unique, rng).sort((a, b) => {
       const loadDifference = (previousDebt[a] ?? 0) + (todayCounts[a] ?? 0) -
         ((previousDebt[b] ?? 0) + (todayCounts[b] ?? 0));
       if (loadDifference) return loadDifference;
-      const previous = sequence.at(-1);
-      const aPair = !separatedClerks.has(a) && a === previous ? 1 : 0;
-      const bPair = !separatedClerks.has(b) && b === previous ? 1 : 0;
-      return bPair - aPair;
+      const placementCost = (name: string) => {
+        const last = sequence.lastIndexOf(name);
+        if (last === -1) return 0;
+        const gap = sequence.length - last - 1;
+        return separatedClerks.has(name) ? separationCost(gap) : gap ** 2;
+      };
+      return placementCost(a) - placementCost(b);
     });
     const chosen = candidates[0]!;
     result.push(chosen);

@@ -61,11 +61,19 @@ describe("fairness and apologies", () => {
     expect(hasAssignmentSpacingConflict(Array(6).fill(khalid))).toBe(false);
   });
 
-  it("uses a single intervening hearing between blocks when flexible clerks are present", () => {
-    const draw = distributeFairly(60, [...CLERKS], {}, "2026-10-25", () => 0.5);
-    for (const clerk of [musa, mohammed, mater]) {
-      expect(draw.lastIndexOf(clerk) - draw.indexOf(clerk) + 1).toBe(14);
+  it.each([10, 15, 20, 21, 25, 30, 40, 50, 60])("keeps both scheduling patterns compact with %i hearings", count => {
+    const draw = distributeFairly(count, [...CLERKS], {}, "2026-10-25", () => 0.5);
+    for (const clerk of CLERKS) {
+      const positions = draw.flatMap((name, index) => name === clerk ? [index] : []);
+      const gaps = positions.slice(1).map((position, index) => position - positions[index]! - 1);
+      if (clerk === khalid || clerk === yahya) {
+        expect(gaps.every(gap => gap >= 1 && gap <= 4)).toBe(true);
+      } else {
+        expect(gaps.every(gap => gap <= 4)).toBe(true);
+        if (positions.length <= 4) expect(gaps.every(gap => gap === 0)).toBe(true);
+      }
     }
+    expect(hasAssignmentSpacingConflict(draw)).toBe(false);
   });
 
   it("preserves fair quotas and feasible spacing at every count and attendance combination", () => {

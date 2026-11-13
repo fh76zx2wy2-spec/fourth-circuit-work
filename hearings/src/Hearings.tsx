@@ -98,7 +98,7 @@ export function Index() {
       const extraCount = c - d.hearings.length;
       const latestMinutes = d.hearings.reduce((max, h) => Math.max(max, h.h * 60 + h.m), 7 * 60 + 30);
       const assigned = d.distributed
-        ? assignAdditionalFairly(d.hearings, extraCount, d.active, prev.days, prev.selectedDate)
+        ? assignAdditionalFairly(sortChrono(d.hearings), extraCount, d.active, prev.days, prev.selectedDate)
         : [];
       const added = Array.from({ length: extraCount }, (_, k) => {
         const minutes = Math.min(latestMinutes + (k + 1) * 30, 14 * 60);
@@ -134,10 +134,11 @@ export function Index() {
       const current = prev.days[prev.selectedDate];
       if (!current || !current.active.length) return prev;
       const assigned = distributeFairly(current.hearings.length, current.active, prev.days, prev.selectedDate);
+      const byHearing = new Map(sortChrono(current.hearings).map((hearing, i) => [hearing.id, assigned[i] ?? null]));
       return { ...prev, days: {
         ...prev.days,
         [prev.selectedDate]: {
-          ...current, hearings: current.hearings.map((h, i) => ({ ...h, clerk: assigned[i] ?? null, originalClerk: assigned[i] ?? null })), distributed: true,
+          ...current, hearings: current.hearings.map(h => ({ ...h, clerk: byHearing.get(h.id) ?? null, originalClerk: byHearing.get(h.id) ?? null })), distributed: true,
         },
       }};
     });
