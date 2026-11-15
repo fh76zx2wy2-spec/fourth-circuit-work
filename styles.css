@@ -250,3 +250,25 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .account-card{max-width:28rem}
 .account-card h1{margin:0 0 1rem;font-size:1.55rem}
 .account-card form>.btn{width:100%;margin-top:1rem}
+
+/* Compact task cards and task-list navigation */
+.task-views,.task-list-filters{display:flex;flex-wrap:wrap;gap:.45rem;margin-block:0 .7rem}
+.task-views button{display:inline-flex;align-items:center;gap:.4rem;min-height:42px;padding:.4rem .65rem;border:1px solid var(--border);border-radius:9px;background:#fff;color:inherit;font:inherit;font-size:.85rem;cursor:pointer}
+.task-views button[aria-pressed="true"]{border-color:#087967;background:#e5f4ef;color:#065d4f;font-weight:700}
+.task-views button span{font-variant-numeric:tabular-nums;color:#52645d}
+.task-list-filters>*{min-width:0;max-width:100%}
+.task-compact{min-width:0;border:1px solid var(--border);border-radius:12px;background:#fff}
+.task-compact summary{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.15rem .6rem;align-items:center;padding:.65rem .8rem;cursor:pointer;list-style:none}
+.task-compact summary::-webkit-details-marker{display:none}
+.task-compact summary strong,.task-card-assignees{min-width:0;overflow-wrap:anywhere}
+.task-card-assignees{grid-column:1;color:#53635b;font-size:.8rem}
+.task-card-status{grid-column:2;grid-row:1 / span 2;font-size:.75rem;color:#4e594f;background:#f1f3f1;border-radius:7px;padding:.22rem .42rem;text-align:center}
+.task-card-status[data-state="pending"]{color:#774705;background:#fff3dc}
+.task-card-status[data-state="done"]{color:#07604f;background:#e5f4ed}
+.task-card-body{padding:.65rem .8rem;border-top:1px solid var(--border);display:grid;gap:.45rem;overflow-wrap:anywhere}
+.task-card-body>.btn{justify-self:start}
+.task-card-assignment{padding-block:.4rem;border-top:1px solid var(--border);font-size:.85rem}
+.task-card-assignment .btn{margin:.25rem 0 0 .25rem}
+@media(max-width:480px){.task-list-filters .search{flex-basis:100%}.task-list-filters select{flex:1 1 8rem}.task-views button{flex:1 1 auto;justify-content:center}}
+
+.task-compact:not([open])>.task-card-body{display:none}

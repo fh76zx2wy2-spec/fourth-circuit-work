@@ -1193,47 +1193,74 @@ const taskComplete=task=>Boolean(task.task_assignments?.length&&task.task_assign
 function taskCardMini(t){
  return `<div class="mini-task"><span class="priority-dot ${esc(t.priority)}"></span><div><b>${esc(short(t.title,62))}</b><small>${esc(profileName(t.created_by))}</small></div><button type="button" class="btn btn-small" data-open-task="${esc(t.id)}">عرض</button></div>`;
 }
+const taskLists=[['mine','الواردة لي'],['sent','المرسلة مني'],['done','المهام المنفذة'],['pending','بانتظار التأكيد']];
+const taskStates={open:'قيد التنفيذ',pending:'بانتظار التأكيد',done:'مكتملة'};
+const assignmentState=a=>a.confirmed_at?'done':a.executed_at?'pending':'open';
+const taskState=t=>taskComplete(t)?'done':t.task_assignments?.some(a=>assignmentState(a)==='pending')?'pending':'open';
+const expandedTaskCards=new Set();
+function taskViewMembership(task){
+ const mine=myAssignment(task);
+ const sent=task.created_by===actorId();
+ const pending=a=>assignmentState(a)==='pending';
+ return {
+  mine:!sent&&mine&&assignmentState(mine)==='open',
+  sent,
+  done:(isJudge()||sent||mine)&&taskComplete(task),
+  pending:isJudge()||sent?task.task_assignments?.some(pending):mine&&pending(mine),
+  all:isJudge(),
+ };
+}
+function taskMatchesMonitor(task){
+ const person=state.taskPersonFilter;
+ const status=state.taskStatusFilter;
+ if(!person)return !status||taskState(task)===status;
+ return (task.created_by===person&&(!status||taskState(task)===status))||
+  task.task_assignments?.some(a=>a.assignee_id===person&&(!status||assignmentState(a)===status));
+}
 function visibleTaskRows(){
- return state.tasks.filter(task=>{
-  if(task.deleted_at||!latinDigits([task.title,task.details,task.case_number,task.proposed_action].join(' ')).includes(state.taskSearch))return false;
-  const mine=myAssignment(task);
-  if(state.taskFilter==='all'&&isJudge()){
-   const status=taskComplete(task)?'done':task.task_assignments?.some(a=>a.executed_at&&!a.confirmed_at)?'pending':'open';
-   return !state.taskStatusFilter||status===state.taskStatusFilter;
-  }
-  if(state.taskFilter==='pending')return isJudge()?task.task_assignments?.some(a=>a.executed_at&&!a.confirmed_at):mine?.executed_at&&!mine.confirmed_at;
-  if(state.taskFilter==='done')return isJudge()?taskComplete(task):mine?.confirmed_at;
-  return mine&&!mine.executed_at;
- }).map(task=>taskRow(task)).join('')||'<p class="hint">لا توجد مهام في هذا العرض.</p>';
+ const filter=state.taskFilter;
+ return state.tasks.filter(task=>!task.deleted_at&&taskViewMembership(task)[filter]&&
+  (filter!=='all'||taskMatchesMonitor(task))&&
+  latinDigits([task.title,task.details,task.case_number,task.proposed_action].join(' ')).includes(state.taskSearch))
+ .map(task=>taskRow(task)).join('')||'<p class="hint">لا توجد مهام في هذا العرض.</p>';
 }
 function tasksPage(){
  if(state.focusedTaskId){
   const task=state.tasks.find(t=>t.id===state.focusedTaskId);
   return `<h1 class="heading">المهمة</h1><button type="button" class="btn btn-soft" data-nav="tasks">العودة إلى المهام</button><div class="tasks-list">${task?taskRow(task,true):'<p class="hint">هذه المهمة غير متاحة.</p>'}</div>`;
  }
- const filters=[['mine','مهامي'],['pending','بانتظار التأكيد'],['done','المهام المنفذة']];
- if(isJudge())filters.push(['all','جميع المهام']);
- return `<div class="section-head"><h1 class="heading">المهام والمتابعة</h1><div class="section-actions"><button class="btn btn-soft" data-action="export-tasks">↓ حفظ المهام كصورة</button><button class="btn btn-primary" data-action="new-task">＋ إضافة مهمة جديدة</button></div></div>
- <div class="filters"><input type="search" class="search" data-task-search aria-label="البحث في المهام" placeholder="ابحث في المهام" value="${esc(state.taskSearch)}"><div class="seg">${filters.map(([key,label])=>`<button data-task-filter="${key}" class="${state.taskFilter===key?'active':''}">${label}</button>`).join('')}</div>
- ${isJudge()&&state.taskFilter==='all'?`<select class="field" data-task-status-filter aria-label="تصفية حالة المهام">${[['','كل الحالات'],['open','غير منفذة'],['pending','بانتظار التأكيد'],['done','مكتملة']].map(([key,label])=>`<option value="${key}" ${(state.taskStatusFilter||'')===key?'selected':''}>${label}</option>`).join('')}</select>`:''}</div>
+ const lists=isJudge()?[...taskLists,['all','متابعة جميع المهام']]:taskLists;
+ const counts={};
+ for(const task of state.tasks){
+  if(task.deleted_at)continue;
+  for(const [key,belongs] of Object.entries(taskViewMembership(task)))if(belongs)counts[key]=(counts[key]||0)+1;
+ }
+ return `<div class="section-head"><h1 class="heading">المهام والمتابعة</h1><div class="section-actions"><button class="btn btn-soft btn-small" data-action="export-tasks">حفظ صورة</button><button class="btn btn-primary" data-action="new-task">＋ إضافة مهمة</button></div></div>
+ <div class="task-views" role="group" aria-label="قوائم المهام">${lists.map(([key,label])=>`<button type="button" data-task-filter="${key}" aria-pressed="${state.taskFilter===key}">${label} <span>${counts[key]||0}</span></button>`).join('')}</div>
+ <div class="task-list-filters"><input type="search" class="search" data-task-search aria-label="البحث في المهام" placeholder="ابحث في المهام" value="${esc(state.taskSearch)}">
+ ${isJudge()&&state.taskFilter==='all'?`<select class="field" data-task-person-filter aria-label="تصفية حسب الموظف"><option value="">كل المستخدمين</option>${state.profiles.filter(p=>p.is_active).map(p=>`<option value="${esc(p.id)}" ${state.taskPersonFilter===p.id?'selected':''}>${esc(p.display_name)}</option>`).join('')}</select>
+ <select class="field" data-task-status-filter aria-label="تصفية حسب الحالة">${[['','كل الحالات'],...Object.entries(taskStates)].map(([key,label])=>`<option value="${key}" ${(state.taskStatusFilter||'')===key?'selected':''}>${label}</option>`).join('')}</select>`:''}</div>
  <div class="tasks-list">${visibleTaskRows()}</div>`;
 }
 function taskRow(t,expanded=false){
  const assignments=t.task_assignments||[];
- return `<article class="task-row ${taskComplete(t)?'task-done':''}"><div class="task-info">
- <div class="task-title">${esc(t.title)} <span class="badge ${t.priority==='urgent'?'priority-urgent':'priority-normal'}">${priorityNames[t.priority]||'عادية'}</span></div>
- <div class="task-details">${esc(expanded?t.details:short(t.details,240))}</div>
+ const status=taskState(t);
+ return `<details class="task-compact" data-task-card="${esc(t.id)}" ${expanded||expandedTaskCards.has(t.id)?'open':''}>
+ <summary><strong>${esc(t.title)}</strong><span class="task-card-assignees">${esc(assignments.map(a=>a.assignee_name).join('، ')||'لم يُحدد المكلف')}</span>
+ <span class="task-card-status" data-state="${status}">${taskStates[status]}</span></summary>
+ <div class="task-card-body">
+ ${t.details?`<div class="task-details">${esc(t.details)}</div>`:''}
  ${t.proposed_action?.trim()?`<div class="task-details"><strong>الإجراء المقترح:</strong> ${esc(t.proposed_action)}</div>`:''}
- <div class="task-meta"><span>${esc(taskCategories[t.category]||'أخرى')}</span>${t.case_number?`<span>رقم القضية: ${caseNumberButton(t.case_number)}</span>`:''}${t.due_date?`<span>الموعد: ${hijri(t.due_date)}</span>`:''}<span>أضافها: ${esc(profileName(t.created_by))}</span></div>
+ <div class="task-meta"><span>أرسلها: ${esc(profileName(t.created_by))}</span><span>${esc(taskCategories[t.category]||'أخرى')}</span>${t.case_number?`<span>رقم القضية: ${caseNumberButton(t.case_number)}</span>`:''}${t.due_date?`<span>الموعد: ${hijri(t.due_date)}</span>`:''}</div>
  ${assignments.map(a=>{
   const button=(action,label)=>`<button type="button" class="btn btn-small btn-soft" data-task-transition="${action}" data-task-id="${esc(t.id)}" data-assignee="${esc(a.assignee_id)}">${label}</button>`;
-  const status=a.confirmed_at?'تم التأكيد':a.executed_at?'بانتظار التأكيد':'قيد التنفيذ';
-  return `<div class="task-meta"><strong>${esc(a.assignee_name)}</strong><span>${status}</span>
-  ${expanded?`<span>الإسناد: ${stamp(a.assigned_at)}</span>${a.executed_at?`<span>التنفيذ: ${stamp(a.executed_at)}</span>`:''}${a.confirmed_at?`<span>التأكيد: ${stamp(a.confirmed_at)}</span>`:''}`:''}
+  return `<div class="task-card-assignment"><strong>${esc(a.assignee_name)} · ${taskStates[assignmentState(a)]}</strong>
+  <div class="task-meta"><span>الإسناد: ${stamp(a.assigned_at)}</span>${a.executed_at?`<span>التنفيذ: ${stamp(a.executed_at)}</span>`:''}${a.confirmed_at?`<span>التأكيد: ${stamp(a.confirmed_at)}</span>`:''}</div>
   ${!a.executed_at&&a.assignee_id===actorId()?button('execute',isJudge()?'إنهاء وأرشفة':'تم التنفيذ'):''}
   ${isJudge()&&a.executed_at&&!a.confirmed_at?button('confirm','تأكيد الإنجاز')+button('return','إعادة المهمة'):''}</div>`;
- }).join('')}</div><div class="task-actions">${expanded?'':`<button class="btn btn-small" data-open-task="${esc(t.id)}">عرض</button>`}
- ${isJudge()||t.created_by===actorId()?`<button class="btn btn-small btn-soft" data-task-edit="${esc(t.id)}">✎ تعديل</button>`:''}</div></article>`;
+ }).join('')}
+ ${isJudge()||t.created_by===actorId()?`<button class="btn btn-small btn-soft" data-task-edit="${esc(t.id)}">تعديل</button>`:''}
+ </div></details>`;
 }
 function taskRecipients(f){
  const profiles=state.profiles.filter(p=>DEMO||p.is_active&&['judge','secretary'].includes(p.role));
@@ -1257,6 +1284,7 @@ async function saveTask(){const f=state.taskForm;if(f&&savingTaskForms.has(f))re
    :await state.client.from('tasks').update(payload).eq('id',editorId).select('id').single();
   if(res.error)throw res.error;
   if(actorId()!==author||state.taskForm!==f)return;
+  if(isNew){state.screen='tasks';state.focusedTaskId=null;state.taskFilter='sent';state.taskSearch='';}
   closeTaskEditor();
   await loadAll();
   notify('تم حفظ المهمة وظهرت في الحسابات المشتركة.','success');
@@ -1487,7 +1515,7 @@ async function init(){if(DEMO){
   if(d){state.cases=d.cases||[];state.tasks=d.tasks||[];state.notifications=d.notifications||[];state.reportApprovals=d.reportApprovals||[];}else persistDemo();
   const chosen=localStorage.getItem('fourth-circuit-demo-profile');
   state.profile=STAFF.find(p=>p.id===chosen)||null;render();return;}
-try{const mod=await import('https://esm.sh/@supabase/supabase-js@2.119.0?bundle');state.client=mod.createClient(CONFIG.supabaseUrl,CONFIG.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true}});const {data:{session},error}=await state.client.auth.getSession();if(error)throw error;if(session?.user.is_anonymous)await state.client.auth.signOut({scope:'local'});state.user=session?.user.is_anonymous?null:session?.user||null;if(state.user){await loadProfile();if(state.profile?.is_active){await loadAll();subscribeChanges();registerPushWorker();openNotificationLink();}}state.client.auth.onAuthStateChange((_ev,session)=>{const old=state.user?.id;state.user=session?.user.is_anonymous?null:session?.user||null;if(state.user?.id!==old){assignmentDays.clear();assignmentActor=null;resetCaseEntry();state.detailId=null;casePreparation=null;state.submission=null;state.focusedTaskId=null;if(state.sub){state.client.removeChannel(state.sub);state.sub=null;}state.profile=null;state.notifications=[];state.unreadCount=0;state.showReadNotices=false;state.noticeHistoryLimit=30;state.hasMoreNoticeHistory=false;state.taskFilter='mine';state.taskStatusFilter='';state.taskSearch='';state.historyDate=null;state.filterDate=displayedWorkday;lastDataSnapshot='';state.initialNotifLoad=true;render();if(state.user){setTimeout(async()=>{await refreshProfile();if(state.profile?.is_active)subscribeChanges();},10);}}});render();}catch(e){app.innerHTML=`<div class="empty" style="min-height:90vh"><b>تعذّر تشغيل الموقع</b><p>${esc(e.message)}. تحقق من بيانات الاتصال بالقاعدة والاتصال بالإنترنت.</p></div>`;}}
+try{const mod=await import('https://esm.sh/@supabase/supabase-js@2.119.0?bundle');state.client=mod.createClient(CONFIG.supabaseUrl,CONFIG.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true}});const {data:{session},error}=await state.client.auth.getSession();if(error)throw error;if(session?.user.is_anonymous)await state.client.auth.signOut({scope:'local'});state.user=session?.user.is_anonymous?null:session?.user||null;if(state.user){await loadProfile();if(state.profile?.is_active){await loadAll();subscribeChanges();registerPushWorker();openNotificationLink();}}state.client.auth.onAuthStateChange((_ev,session)=>{const old=state.user?.id;state.user=session?.user.is_anonymous?null:session?.user||null;if(state.user?.id!==old){assignmentDays.clear();assignmentActor=null;resetCaseEntry();state.detailId=null;casePreparation=null;state.submission=null;state.focusedTaskId=null;if(state.sub){state.client.removeChannel(state.sub);state.sub=null;}state.profile=null;state.notifications=[];state.unreadCount=0;state.showReadNotices=false;state.noticeHistoryLimit=30;state.hasMoreNoticeHistory=false;state.taskFilter='mine';state.taskStatusFilter='';state.taskPersonFilter='';expandedTaskCards.clear();state.taskSearch='';state.historyDate=null;state.filterDate=displayedWorkday;lastDataSnapshot='';state.initialNotifLoad=true;render();if(state.user){setTimeout(async()=>{await refreshProfile();if(state.profile?.is_active)subscribeChanges();},10);}}});render();}catch(e){app.innerHTML=`<div class="empty" style="min-height:90vh"><b>تعذّر تشغيل الموقع</b><p>${esc(e.message)}. تحقق من بيانات الاتصال بالقاعدة والاتصال بالإنترنت.</p></div>`;}}
 let backgroundRefreshRunning=false;
 async function refreshInBackground(){
  if(backgroundRefreshRunning||!state.profile?.is_active)return;
@@ -1532,7 +1560,14 @@ async function sharePng(){const cases=listForDate().filter(x=>!state.posterAppro
 function exportPng(){const cases=listForDate().filter(x=>!state.posterApprovedOnly||x.status==='approved');if(!cases.length)return notify('لا توجد قضايا لتصديرها.','error');try{const canvas=buildPosterCanvas(cases);canvas.toBlob(blob=>{if(!blob)return notify('لم يتمكن المتصفح من إنشاء الصورة.','error');const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`تقرير-القضايا-${state.filterDate}.png`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),12000);notify('تم تجهيز صورة التقرير للحفظ.','success');},'image/png');}catch(e){notify('تعذر حفظ الصورة: '+e.message,'error');}}
 document.addEventListener('click',async e=>{const target=e.target.closest('[data-notice-id],[data-task-transition],[data-copy-case-number],[data-copy-case-field],[data-open-task],[data-open-submission],[data-nav],[data-action],[data-edit],[data-detail],[data-approve],[data-save],[data-stage],[data-person],[data-task-toggle],[data-task-edit],[data-task-filter],[data-day-tab]');if(!target)return;if(target.dataset.noticeId){await openNotice(target.dataset.noticeId);return;}if(target.dataset.taskTransition){await changeTaskAssignment(target);return;}if(target.matches('[data-copy-case-number],[data-copy-case-field]')){void copyCaseNumber(target);return;}if(target.dataset.openTask){void openTaskNotification(target.dataset.openTask);return;}if(target.dataset.openSubmission){void openSubmission(target.dataset.openSubmission);return;}if(target.dataset.dayTab){if(displayDays().includes(target.dataset.dayTab)){state.historyDate=null;state.filterDate=target.dataset.dayTab;render();}return;}if(target.dataset.person){const choice=STAFF.find(x=>x.id===target.dataset.person);if(DEMO){state.profile=choice;localStorage.setItem('fourth-circuit-demo-profile',choice.id);notify(`مرحبًا ${choice.display_name}`,'success');render();}return;}if(target.dataset.taskEdit){openTaskEditor(target.dataset.taskEdit);return;}if(target.dataset.taskFilter){state.taskFilter=target.dataset.taskFilter;render();return;}if(target.dataset.nav){navigate(target.dataset.nav);return;}if(target.dataset.edit){openEditor(target.dataset.edit);return;}if(target.dataset.detail){void openCaseDetail(target.dataset.detail);return;}if(target.dataset.approve){await approveCase(target.dataset.approve);return;}if(target.dataset.save){await saveCase(target.dataset.save);return;}if(target.dataset.stage){state.stageFilter=target.dataset.stage;render();return;}const action=target.dataset.action;if(!action)return;switch(action){case 'new-case':openEditor();break;case 'case-entry-mode':switchCaseEntry(target.dataset.entryMode);break;case 'close-bulk':case 'discard-bulk':case 'add-bulk-row':case 'bulk-details':case 'remove-bulk-row':bulkAction(action,target);break;case 'discard-case-draft':discardSingleDraft();break;case 'new-task':openTaskEditor();break;case 'close-task-editor':closeTaskEditor();break;case 'approve-report':await approveReport();break;case 'export-tasks':exportTasksPng();break;case 'reload-preparation':void openCaseDetail(state.detailId);break;case 'close-editor':case 'close-detail':if(!caseSaving)closeModal();break;case 'toggle-source':state.showSource=!state.showSource;render();break;case 'next-day':state.historyDate=null;state.filterDate=nextWorkday();render();break;case 'approve-from-editor':await saveCase('approved');break;case 'delete-case':await softDeleteCase();break;case 'toggle-notifs':state.showNotifs=!state.showNotifs;render();break;case 'mark-read':await markRead();break;case 'notice-history':state.showReadNotices=!state.showReadNotices;render();break;case 'more-notice-history':state.noticeHistoryLimit=(state.noticeHistoryLimit||30)+30;await loadAll();break;case 'inspect-push':await inspectPushDevice();break;case 'local-push-display':await testLocalPushDisplay();break;case 'test-push-worker':await testCasePush(true);break;case 'renew-case-push':await enableCasePush(true);break;case 'test-case-push':await testCasePush();break;case 'enable-case-push':await enableCasePush();break;case 'approve-selected':await approveDisplayedCases(false);break;case 'approve-all-cases':await approveDisplayedCases(true);break;case 'enable-notifs':await enableNotifications();break;case 'refresh':await loadAll();notify('تم تحديث البيانات من القاعدة.','success');break;case 'logout':if(DEMO){resetCaseEntry();state.profile=null;localStorage.removeItem('fourth-circuit-demo-profile');render();}else await signOutAccount();break;case 'toggle-auth':state.authMode=state.authMode==='login'?'signup':'login';render();break;case 'export-png':exportPng();break;case 'share-png':await sharePng();break;}});
 document.addEventListener('input',e=>{normalizeNumberInput(e.target);if(e.target.matches('#judge-preparation [name]')){updatePreparationField(e.target);return;}if(e.target.dataset.formField&&e.target.dataset.formField!=='stage'){const row=bulkRowFor(e.target);if(row||state.form){(row||state.form)[e.target.dataset.formField]=e.target.value;rememberCaseEntry();markCaseError(e.target.closest('[data-case-control]'),'');}}if(e.target.dataset.taskField&&state.taskForm){state.taskForm[e.target.dataset.taskField]=e.target.value;}if(e.target.matches('[data-task-search]')){state.taskSearch=e.target.value;const list=$('.tasks-list');if(list)list.innerHTML=visibleTaskRows();}if(e.target.matches('[data-search]')){state.search=e.target.value;const list=$('.cases-list');if(list)list.innerHTML=filteredCases().length?filteredCases().map(c=>caseRow(c,isJudge())).join(''):emptyState();void refreshCaseAssignments();}});
+document.addEventListener('toggle',e=>{
+ const card=e.target;
+ if(!card.isConnected||!card.matches?.('[data-task-card]'))return;
+ if(card.open)expandedTaskCards.add(card.dataset.taskCard);
+ else expandedTaskCards.delete(card.dataset.taskCard);
+},true);
 document.addEventListener('change',e=>{
+ if(e.target.matches('[data-task-person-filter]')){state.taskPersonFilter=e.target.value;render();return;}
  if(e.target.matches('[data-task-status-filter]')){state.taskStatusFilter=e.target.value;render();return;}
  if(state.taskForm&&e.target.matches('[data-task-all],[data-task-recipient]')){
   const inputs=[...document.querySelectorAll('[data-task-recipient]')];
