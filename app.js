@@ -1260,19 +1260,21 @@ function syncTaskProposalField(){
 function taskRow(t,expanded=false){
  const assignments=t.task_assignments||[];
  const status=taskState(t);
+ const returned=assignments.some(a=>a.attempt>0&&!a.executed_at);
+ const statusLabel=status==='pending'?'تم التنفيذ · بانتظار التأكيد':status==='open'&&returned?'أُعيدت للاستكمال':taskStates[status];
  return `<details class="task-compact" data-task-card="${esc(t.id)}" ${expanded||expandedTaskCards.has(t.id)?'open':''}>
  <summary><strong>${esc(t.title)}</strong><span class="task-card-assignees">${esc(assignments.map(a=>a.assignee_name).join('، ')||'لم يُحدد المكلف')}</span>
- <span class="task-card-status" data-state="${status}">${taskStates[status]}</span></summary>
+ <span class="task-card-status" data-state="${status}">${statusLabel}</span></summary>
  <div class="task-card-body">
  ${t.details?`<div class="task-details">${esc(t.details)}</div>`:''}
  ${taskNeedsProposal(t)&&t.proposed_action?.trim()?`<div class="task-details"><strong>الإجراء المقترح:</strong> ${esc(t.proposed_action)}</div>`:''}
  <div class="task-meta"><span>أرسلها: ${esc(profileName(t.created_by))}</span><span>${esc(taskCategories[t.category]||'أخرى')}</span>${t.case_number?`<span>رقم القضية: ${caseNumberButton(t.case_number)}</span>`:''}${t.due_date?`<span>الموعد: ${hijri(t.due_date)}</span>`:''}</div>
  ${assignments.map(a=>{
   const button=(action,label)=>`<button type="button" class="btn btn-small btn-soft" data-task-transition="${action}" data-task-id="${esc(t.id)}" data-assignee="${esc(a.assignee_id)}">${label}</button>`;
-  return `<div class="task-card-assignment"><strong>${esc(a.assignee_name)} · ${taskStates[assignmentState(a)]}</strong>
+  return `<div class="task-card-assignment"><strong>${esc(a.assignee_name)} · ${a.executed_at&&!a.confirmed_at?'تم التنفيذ · بانتظار التأكيد':a.attempt>0&&!a.executed_at?'أُعيدت للاستكمال':taskStates[assignmentState(a)]}</strong>
   <div class="task-meta"><span>الإسناد: ${stamp(a.assigned_at)}</span>${a.executed_at?`<span>التنفيذ: ${stamp(a.executed_at)}</span>`:''}${a.confirmed_at?`<span>التأكيد: ${stamp(a.confirmed_at)}</span>`:''}</div>
   ${!a.executed_at&&a.assignee_id===actorId()?button('execute',isJudge()?'إنهاء وأرشفة':'تم التنفيذ'):''}
-  ${isJudge()&&a.executed_at&&!a.confirmed_at?button('confirm','تأكيد الإنجاز')+button('return','إعادة المهمة'):''}</div>`;
+  ${isJudge()&&a.executed_at&&!a.confirmed_at?button('confirm','تأكيد الإنجاز')+button('return','إعادة للاستكمال'):''}</div>`;
  }).join('')}
  ${isJudge()||t.created_by===actorId()?`<button class="btn btn-small btn-soft" data-task-edit="${esc(t.id)}">تعديل</button>`:''}
  ${isSubmissionRecipient()?`<button type="button" class="btn btn-small btn-danger" data-task-delete="${esc(t.id)}">حذف نهائي</button>`:''}
@@ -1339,6 +1341,9 @@ async function changeTaskAssignment(button){
   });
   if(error)throw error;
   await loadAll();
+  const message=button.dataset.taskTransition==='execute'?(isJudge()?'أُنجزت المهمة.':'سُجّل التنفيذ وأُشعر القاضي للتأكيد.'):
+   button.dataset.taskTransition==='confirm'?'تم تأكيد الإنجاز.':'أُعيدت المهمة للموظف للاستكمال.';
+  notify(message,'success');
  }catch{notify('تعذّر تحديث حالة المهمة.','error');}
  finally{button.disabled=false;}
 }

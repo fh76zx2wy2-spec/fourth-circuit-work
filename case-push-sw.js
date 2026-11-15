@@ -1,4 +1,4 @@
-const revision = '5';
+const revision = '6';
 const diagnosticsCache = 'fourth-circuit-push-diagnostics';
 const diagnosticsUrl = new URL('last-receipt.json', self.registration.scope).href;
 const validId = id => typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id);
@@ -23,7 +23,10 @@ async function showPush(event) {
   const senderNames = {ziyad:'زياد البابطين',yahya:'يحيى بكري',abdulrahman:'عبد الرحمن الشريف'};
   const categories = {case:'قضية',email:'بريد',ticket:'تذكرة',followup:'متابعة',general:'عامة'};
   const senderName = assigned ? senderNames[assigned[1]] : null;
-  const taskMessage = sender?.startsWith?.('executed:') ? 'هناك مهمة بانتظار تأكيدك.' :
+  const execution = typeof sender === 'string' ? /^executed:(yahya|abdulrahman|unknown):(case|email|ticket|followup|general)$/.exec(sender) : null;
+  const executor = execution ? senderNames[execution[1]] : null;
+  const taskMessage = execution ? `تم تنفيذ مهمة${executor?' بواسطة '+executor:''} · ${categories[execution[2]]}. بانتظار تأكيدك.` :
+    sender?.startsWith?.('executed:') ? 'تم تنفيذ مهمة. بانتظار تأكيدك.' :
     sender?.startsWith?.('returned:') ? 'أُعيدت إليك مهمة. افتح الموقع للاطلاع عليها.' :
     assigned ? `مهمة جديدة${senderName?' من '+senderName:''} · ${categories[assigned[2]]}. اضغط للاطلاع عليها.` :
     'لديك مهمة جديدة. افتح الموقع للاطلاع عليها.';
