@@ -1251,18 +1251,21 @@ async function saveTask(){const f=state.taskForm;if(f&&savingTaskForms.has(f))re
  if(isNew)payload.assigned_to=f.assigned_to;
  savingTaskForms.add(f);
  try{if(DEMO){const old=state.tasks.find(x=>x.id===state.taskEditorId),v={...old,...payload,id:isNew?uid():old.id,status:old?.status||'open',created_by:old?.created_by||actorId(),updated_by:actorId(),created_at:old?.created_at||new Date().toISOString(),updated_at:new Date().toISOString()};if(isNew)v.task_assignments=f.assigned_to.map(id=>({task_id:v.id,assignee_id:id,assignee_name:profileName(id),assigned_at:v.created_at}));state.tasks=isNew?[v,...state.tasks]:state.tasks.map(x=>x.id===v.id?v:x);demoEvent(`${state.profile.display_name} ${isNew?'أضاف':'عدّل'} مهمة: ${v.title}`);closeTaskEditor();notify('تم حفظ المهمة في المعاينة.','success');return;}
-const table=state.client.from('tasks');
   if(isNew)f.id??=crypto.randomUUID();
   const res=isNew
-   ?await table.upsert({...payload,id:f.id,created_by:author},{onConflict:'id',ignoreDuplicates:true})
-   :await table.update(payload).eq('id',editorId);
+   ?await state.client.rpc('save_directed_task',{p_task:{...payload,id:f.id}})
+   :await state.client.from('tasks').update(payload).eq('id',editorId).select('id').single();
   if(res.error)throw res.error;
   if(actorId()!==author||state.taskForm!==f)return;
   closeTaskEditor();
   await loadAll();
   notify('تم حفظ المهمة وظهرت في الحسابات المشتركة.','success');
  }catch(e){
-  if(actorId()===author&&state.taskForm===f)notify('تعذّر حفظ المهمة: '+e.message,'error');
+  if(actorId()===author&&state.taskForm===f){
+   const message=e.message==='task_already_saved'?'حُفظت هذه المهمة في محاولة سابقة. افتحها من حساب المكلف أو القاضي لمراجعتها.':
+    e.code==='42501'?'تعذّر حفظ المهمة بصلاحيات هذا الحساب.':'تعذّر حفظ المهمة: '+e.message;
+   notify(message,'error');
+  }
  }finally{savingTaskForms.delete(f);}
 }
 async function changeTaskAssignment(button){
