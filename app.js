@@ -245,56 +245,101 @@ function openNotificationLink(){
   else void openSubmission(submission);
  }
 }
+// Keep this application server key and the worker URL/scope stable across releases.
 const casePushKey='BND6akMpzQ92HuUYHN47pGm2rhVJrbEqv1Yv0YM3g7doSzBjVcHl43zcVnKK1C11SPjxPz0IRzhipXFLSbH25-c';
+const pushOwnerKey='fourth-circuit-push-owner';
+let pushOperation=Promise.resolve();
+function queuePushOperation(operation){
+ const result=pushOperation.then(operation);
+ pushOperation=result.catch(()=>{});
+ return result;
+}
+function rememberedPushOwner(){
+ try{return localStorage.getItem(pushOwnerKey);}catch{return null;}
+}
+function rememberPushOwner(actor){
+ try{localStorage.setItem(pushOwnerKey,actor);}catch{}
+}
+function supportsPush(){
+ return 'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+}
+async function stablePushRegistration(){
+ const registration=await navigator.serviceWorker.register('./case-push-sw.js');
+ return registration.active?registration:navigator.serviceWorker.ready;
+}
+function subscribePush(registration){
+ return registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:casePushKey});
+}
+async function syncPushSubscription(actor){
+ if(actor!==actorId()||!state.profile?.is_active)return;
+ const registration=await stablePushRegistration();
+ if(Notification.permission!=='granted'||actor!==actorId())return;
+ let subscription=await registration.pushManager.getSubscription();
+ if(rememberedPushOwner()!==actor){
+  if(!subscription)return;
+  const {data,error}=await state.client.rpc('check_judge_push_subscription',{browser_subscription:subscription.toJSON()});
+  if(error||!data||actor!==actorId())return;
+  rememberPushOwner(actor);
+  return;
+ }
+ subscription??=await subscribePush(registration);
+ if(actor!==actorId())return;
+ const {error}=await state.client.rpc('register_judge_push',{subscription:subscription.toJSON()});
+ if(error)throw error;
+}
 function registerPushWorker(){
- if(state.profile?.is_active&&'serviceWorker' in navigator&&'PushManager' in window){
-  void navigator.serviceWorker.register('./case-push-sw.js').catch(()=>{});
+ if(state.profile?.is_active&&supportsPush()){
+  const actor=actorId();
+  void queuePushOperation(()=>syncPushSubscription(actor)).catch(()=>{});
  }
 }
 async function enableCasePush(renew=false){
  if(!state.profile?.is_active)return;
- if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){
+ if(!supportsPush()){
   notify('لتفعيل الإشعارات على الآيفون، أضف الموقع إلى الشاشة الرئيسية وافتحه من أيقونته.','error');
   return;
  }
  const actor=actorId();
  try{
-  if(await Notification.requestPermission()!=='granted'){
+  if(Notification.permission!=='granted'&&await Notification.requestPermission()!=='granted'){
    notify('يلزم السماح بالإشعارات في إعدادات الجهاز.','error');
    return;
   }
-  await navigator.serviceWorker.register('./case-push-sw.js');
-  const registration=await navigator.serviceWorker.ready;
-  const existing=await registration.pushManager.getSubscription();
-  if(renew&&existing&&!(await existing.unsubscribe()))throw new Error('unsubscribe_failed');
-  const subscription=(!renew&&existing)||
-   await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:casePushKey});
-  if(actorId()!==actor)return;
-  const {error}=await state.client.rpc('register_judge_push',{subscription:subscription.toJSON()});
-  if(error)throw error;
-  if(renew&&existing&&existing.endpoint!==subscription.endpoint){
-   await state.client.rpc('unregister_judge_push',{destination:existing.endpoint});
-  }
-  notify('فُعّلت إشعارات الإرسال على هذا الجهاز.','success');
-  if(renew)void inspectPushDevice();
+  await queuePushOperation(async()=>{
+   if(actorId()!==actor)return;
+   const registration=await stablePushRegistration();
+   const existing=await registration.pushManager.getSubscription();
+   if(renew&&existing&&!(await existing.unsubscribe()))throw new Error('unsubscribe_failed');
+   const subscription=(!renew&&existing)||await subscribePush(registration);
+   if(actorId()!==actor)return;
+   const {error}=await state.client.rpc('register_judge_push',{subscription:subscription.toJSON()});
+   if(error)throw error;
+   rememberPushOwner(actor);
+   if(renew&&existing&&existing.endpoint!==subscription.endpoint){
+    await state.client.rpc('unregister_judge_push',{destination:existing.endpoint});
+   }
+   notify('فُعّلت الإشعارات على هذا الجهاز.','success');
+  });
+  if(renew&&actorId()===actor)void inspectPushDevice();
  }catch{
-  notify('تعذّر تفعيل إشعارات الإرسال على هذا الجهاز.','error');
+  notify('تعذّر تفعيل الإشعارات على هذا الجهاز.','error');
  }
 }
 async function signOutAccount(){
- if(state.profile?.is_active&&'serviceWorker' in navigator){
-  try{
-   const registration=await navigator.serviceWorker.getRegistration();
-   const subscription=await registration?.pushManager?.getSubscription();
-   if(subscription){
-    await Promise.allSettled([
-     state.client.rpc('unregister_judge_push',{destination:subscription.endpoint}),
-     subscription.unsubscribe(),
-    ]);
-   }
-  }catch{}
- }
- await state.client?.auth.signOut({scope:'local'});
+ await queuePushOperation(async()=>{
+  if(state.profile?.is_active&&supportsPush()){
+   try{
+    const registration=await navigator.serviceWorker.getRegistration();
+    const subscription=await registration?.pushManager?.getSubscription();
+    if(subscription){
+     const {data}=await state.client.rpc('check_judge_push_subscription',{browser_subscription:subscription.toJSON()});
+     if(data)rememberPushOwner(actorId());
+     await state.client.rpc('unregister_judge_push',{destination:subscription.endpoint});
+    }
+   }catch{}
+  }
+  await state.client?.auth.signOut({scope:'local'});
+ });
 }
 let pushDiagnostics=null;
 
