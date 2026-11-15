@@ -222,7 +222,7 @@ async function openTaskNotification(id,read=true){
  if(!state.profile?.is_active||!/^[0-9a-f-]{36}$/i.test(id))return;
  const actor=actorId();
  try{
-  const {data,error}=await state.client.from('tasks').select('*,task_assignments(*)').eq('id',id).is('deleted_at',null).maybeSingle();
+  const {data,error}=await state.client.from('tasks').select('*,sent_by_me,task_assignments(*)').eq('id',id).is('deleted_at',null).maybeSingle();
   if(error)throw error;
   if(actorId()!==actor)return;
   if(!data){notify('هذه المهمة غير متاحة.');return;}
@@ -1200,7 +1200,7 @@ const taskState=t=>taskComplete(t)?'done':t.task_assignments?.some(a=>assignment
 const expandedTaskCards=new Set();
 function taskViewMembership(task){
  const mine=myAssignment(task);
- const sent=task.created_by===actorId();
+ const sent=task.sent_by_me??(task.created_by===actorId());
  const pending=a=>assignmentState(a)==='pending';
  return {
   mine:!sent&&mine&&assignmentState(mine)==='open',
@@ -1482,7 +1482,7 @@ async function loadAll({background=false}={}){if(DEMO){render();return;}if(!stat
   loadSharedCases(),
   state.client.from('notifications').select('*',{count:'exact'}).not('read_at','is',null).order('created_at',{ascending:false}).order('id').limit(state.noticeHistoryLimit||30),
   state.client.from('profiles').select('id,display_name,is_active,role'),
-  state.client.from('tasks').select('*,task_assignments(*)').is('deleted_at',null).order('created_at',{ascending:false}),
+  state.client.from('tasks').select('*,sent_by_me,task_assignments(*)').is('deleted_at',null).order('created_at',{ascending:false}),
   state.client.from('report_approvals').select('*'),loadSessionOutcomes(),
   state.client.from('notifications').select('*',{count:'exact'}).is('read_at',null).order('created_at',{ascending:false}).limit(100)]);
  if(state.user?.id!==userId||sequence!==loadSequence)return;
