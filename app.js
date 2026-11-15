@@ -1242,6 +1242,21 @@ function tasksPage(){
  <select class="field" data-task-status-filter aria-label="تصفية حسب الحالة">${[['','كل الحالات'],...Object.entries(taskStates)].map(([key,label])=>`<option value="${key}" ${(state.taskStatusFilter||'')===key?'selected':''}>${label}</option>`).join('')}</select>`:''}</div>
  <div class="tasks-list">${visibleTaskRows()}</div>`;
 }
+function taskNeedsProposal(task,isNew=false){
+ const sender=isNew?state.profile:state.profiles.find(profile=>profile.id===task.created_by);
+ if(sender?.role!=='secretary')return false;
+ const recipients=task.assigned_to??task.task_assignments?.map(assignment=>assignment.assignee_id)??[];
+ return state.profiles.some(profile=>(DEMO||profile.is_active)&&profile.role==='judge'&&
+  profile.display_name==='زياد محمد البابطين'&&recipients.includes(profile.id));
+}
+function syncTaskProposalField(){
+ const field=$('#task-proposed-action');
+ if(!field)return;
+ const required=taskNeedsProposal(state.taskForm,state.taskEditorId==='new');
+ field.closest('[data-task-proposal]').style.display=required?'':'none';
+ field.required=required;
+ field.disabled=!required;
+}
 function taskRow(t,expanded=false){
  const assignments=t.task_assignments||[];
  const status=taskState(t);
@@ -1250,7 +1265,7 @@ function taskRow(t,expanded=false){
  <span class="task-card-status" data-state="${status}">${taskStates[status]}</span></summary>
  <div class="task-card-body">
  ${t.details?`<div class="task-details">${esc(t.details)}</div>`:''}
- ${t.proposed_action?.trim()?`<div class="task-details"><strong>الإجراء المقترح:</strong> ${esc(t.proposed_action)}</div>`:''}
+ ${taskNeedsProposal(t)&&t.proposed_action?.trim()?`<div class="task-details"><strong>الإجراء المقترح:</strong> ${esc(t.proposed_action)}</div>`:''}
  <div class="task-meta"><span>أرسلها: ${esc(profileName(t.created_by))}</span><span>${esc(taskCategories[t.category]||'أخرى')}</span>${t.case_number?`<span>رقم القضية: ${caseNumberButton(t.case_number)}</span>`:''}${t.due_date?`<span>الموعد: ${hijri(t.due_date)}</span>`:''}</div>
  ${assignments.map(a=>{
   const button=(action,label)=>`<button type="button" class="btn btn-small btn-soft" data-task-transition="${action}" data-task-id="${esc(t.id)}" data-assignee="${esc(a.assignee_id)}">${label}</button>`;
@@ -1269,12 +1284,12 @@ function taskRecipients(f){
  <div class="task-meta"><label><input type="checkbox" data-task-all ${profiles.length&&f.assigned_to.length===profiles.length?'checked':''}> الجميع</label>
  ${profiles.map(p=>`<label><input type="checkbox" data-task-recipient="${esc(p.id)}" ${f.assigned_to.includes(p.id)?'checked':''}> ${esc(p.display_name)}</label>`).join('')}</div></fieldset>`;
 }
-function taskEditor(){const f=state.taskForm,id=state.taskEditorId;const fld=(name,label,type='text')=>`<div class="form-group"><label class="form-label">${label}</label><input class="input" type="${type}" data-task-field="${name}" value="${esc(f[name]||'')}" />${name==='case_number'?copyCaseFieldButton:''}</div>`;
- return `<div class="modal-backdrop"><div class="modal task-modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>${id==='new'?'إضافة مهمة أو تذكير':'تعديل المهمة'}</h2><small>يُحفظ اسم من أضاف المهمة ومن أنجزها.</small></div><button class="icon-button" data-action="close-task-editor">✕</button></div><form id="task-form"><div class="modal-body"><div class="form-grid two"><div class="form-group wide"><label class="form-label">عنوان المهمة *</label><input class="input" data-task-field="title" maxlength="220" required placeholder="مثل: الرد على البريد بخصوص القضية ..." value="${esc(f.title||'')}" /></div><div class="form-group"><label class="form-label">نوع المهمة</label><select class="input" data-task-field="category">${Object.entries(taskCategories).map(([k,v])=>`<option value="${k}" ${f.category===k?'selected':''}>${v}</option>`).join('')}</select></div>${fld('case_number','رقم القضية أو التذكرة (اختياري)')}<div class="form-group"><label class="form-label">الأولوية</label><select class="input" data-task-field="priority">${Object.entries(priorityNames).map(([k,v])=>`<option value="${k}" ${f.priority===k?'selected':''}>${v}</option>`).join('')}</select></div>${hijriPicker('due_date',f.due_date,'التاريخ المطلوب (هجري)',{past:5,future:10})}${id==='new'?taskRecipients(f):''}<div class="form-group wide"><label class="form-label">تفاصيل المطلوب</label><textarea class="input" rows="4" data-task-field="details" placeholder="اذكر مضمون الطلب أو الرسالة والمستند الذي يُرجع إليه.">${esc(f.details||'')}</textarea></div><div class="form-group wide"><label class="form-label" for="task-proposed-action">الإجراء المقترح <span class="case-required" aria-hidden="true">*</span></label><textarea id="task-proposed-action" class="input" rows="2" data-task-field="proposed_action" aria-describedby="task-proposal-hint" required placeholder="مثل: إعداد الإفادة المطلوبة والرفع بها للمحكمة">${esc(f.proposed_action||'')}</textarea><small id="task-proposal-hint" class="hint">توصية للعرض على القاضي.</small></div></div></div><div class="modal-foot"><button type="button" class="btn" data-action="close-task-editor">إلغاء</button><button type="submit" class="btn btn-primary">✓ حفظ المهمة</button></div></form></div></div>`;}
+function taskEditor(){const f=state.taskForm,id=state.taskEditorId,needsProposal=taskNeedsProposal(f,id==='new');const fld=(name,label,type='text')=>`<div class="form-group"><label class="form-label">${label}</label><input class="input" type="${type}" data-task-field="${name}" value="${esc(f[name]||'')}" />${name==='case_number'?copyCaseFieldButton:''}</div>`;
+ return `<div class="modal-backdrop"><div class="modal task-modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>${id==='new'?'إضافة مهمة أو تذكير':'تعديل المهمة'}</h2><small>يُحفظ اسم من أضاف المهمة ومن أنجزها.</small></div><button class="icon-button" data-action="close-task-editor">✕</button></div><form id="task-form"><div class="modal-body"><div class="form-grid two"><div class="form-group wide"><label class="form-label">عنوان المهمة *</label><input class="input" data-task-field="title" maxlength="220" required placeholder="مثل: الرد على البريد بخصوص القضية ..." value="${esc(f.title||'')}" /></div><div class="form-group"><label class="form-label">نوع المهمة</label><select class="input" data-task-field="category">${Object.entries(taskCategories).map(([k,v])=>`<option value="${k}" ${f.category===k?'selected':''}>${v}</option>`).join('')}</select></div>${fld('case_number','رقم القضية أو التذكرة (اختياري)')}<div class="form-group"><label class="form-label">الأولوية</label><select class="input" data-task-field="priority">${Object.entries(priorityNames).map(([k,v])=>`<option value="${k}" ${f.priority===k?'selected':''}>${v}</option>`).join('')}</select></div>${hijriPicker('due_date',f.due_date,'التاريخ المطلوب (هجري)',{past:5,future:10})}${id==='new'?taskRecipients(f):''}<div class="form-group wide"><label class="form-label">تفاصيل المطلوب</label><textarea class="input" rows="4" data-task-field="details" placeholder="اذكر مضمون الطلب أو الرسالة والمستند الذي يُرجع إليه.">${esc(f.details||'')}</textarea></div><div class="form-group wide" data-task-proposal ${needsProposal?'':'style="display:none"'}><label class="form-label" for="task-proposed-action">الإجراء المقترح <span class="case-required" aria-hidden="true">*</span></label><textarea id="task-proposed-action" class="input" rows="2" data-task-field="proposed_action" aria-describedby="task-proposal-hint" ${needsProposal?'required':'disabled'} placeholder="مثل: إعداد الإفادة المطلوبة والرفع بها للمحكمة">${esc(f.proposed_action||'')}</textarea><small id="task-proposal-hint" class="hint">توصية للعرض على القاضي.</small></div></div></div><div class="modal-foot"><button type="button" class="btn" data-action="close-task-editor">إلغاء</button><button type="submit" class="btn btn-primary">✓ حفظ المهمة</button></div></form></div></div>`;}
 function openTaskEditor(id='new'){state.editorId=null;state.detailId=null;state.taskEditorId=id;state.taskForm=id==='new'?initialTask():{...state.tasks.find(t=>t.id===id)};render();}
 function closeTaskEditor(){state.taskEditorId=null;state.taskForm=null;render();}
 const savingTaskForms=new WeakSet();
-async function saveTask(){const f=state.taskForm;if(f&&savingTaskForms.has(f))return;if(!f||!f.title?.trim()||f.title.trim().length<3)return notify('اكتب عنوان المهمة على الأقل.','error');if(!f.proposed_action?.trim()){ $('#task-proposed-action')?.focus();return notify('أدخل الإجراء المقترح للمهمة.','error');}const due=readHijriPicker('due_date');if(!due.ok)return notify(due.message,'error');f.due_date=due.value;const fields=['title','category','case_number','details','proposed_action','due_date','priority'];const original=state.tasks.find(task=>task.id===state.taskEditorId);const payload=Object.fromEntries(fields.map(k=>[k,savedText(f[k],original?.[k])]));payload.due_date=payload.due_date||null;const editorId=state.taskEditorId,author=actorId(),isNew=editorId==='new';
+async function saveTask(){const f=state.taskForm;if(f&&savingTaskForms.has(f))return;if(!f||!f.title?.trim()||f.title.trim().length<3)return notify('اكتب عنوان المهمة على الأقل.','error');const needsProposal=taskNeedsProposal(f,state.taskEditorId==='new');if(needsProposal&&!f.proposed_action?.trim()){ $('#task-proposed-action')?.focus();return notify('أدخل الإجراء المقترح للمهمة.','error');}const due=readHijriPicker('due_date');if(!due.ok)return notify(due.message,'error');f.due_date=due.value;const fields=['title','category','case_number','details','due_date','priority'];if(needsProposal)fields.push('proposed_action');const original=state.tasks.find(task=>task.id===state.taskEditorId);const payload=Object.fromEntries(fields.map(k=>[k,savedText(f[k],original?.[k])]));payload.due_date=payload.due_date||null;const editorId=state.taskEditorId,author=actorId(),isNew=editorId==='new';
  if(isNew&&!f.assigned_to.length){document.querySelector('[data-task-recipient]')?.focus();return notify('اختر من توجه إليه المهمة.','error');}
  if(isNew)payload.assigned_to=f.assigned_to;
  savingTaskForms.add(f);
@@ -1592,6 +1607,7 @@ document.addEventListener('change',e=>{
   const inputs=[...document.querySelectorAll('[data-task-recipient]')];
   if(e.target.matches('[data-task-all]'))inputs.forEach(input=>{input.checked=e.target.checked;});
   state.taskForm.assigned_to=inputs.filter(input=>input.checked).map(input=>input.dataset.taskRecipient);
+  syncTaskProposalField();
   $('[data-task-all]').checked=inputs.length>0&&state.taskForm.assigned_to.length===inputs.length;
   return;
  }
