@@ -222,7 +222,7 @@ async function openTaskNotification(id,read=true){
  if(!state.profile?.is_active||!/^[0-9a-f-]{36}$/i.test(id))return;
  const actor=actorId();
  try{
-  const {data,error}=await state.client.from('tasks').select('*').eq('id',id).is('deleted_at',null).maybeSingle();
+  const {data,error}=await state.client.from('tasks').select('*,task_assignments(*)').eq('id',id).is('deleted_at',null).maybeSingle();
   if(error)throw error;
   if(actorId()!==actor)return;
   if(!data){notify('هذه المهمة غير متاحة.');return;}
