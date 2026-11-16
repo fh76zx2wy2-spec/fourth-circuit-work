@@ -1,3 +1,5 @@
+import {mountDiwanWorkspace} from './diwan/workspace.js?v=1';
+
 const gateLabels = {
   locked: 'أدخل رمز ديوان القضايا.',
   setup: 'أنشئ رمزًا من 8 إلى 128 حرفًا.',
@@ -69,69 +71,73 @@ export async function mountDiwan(state) {
     if (!current()) throw Error('جلسة الديوان غير متاحة.');
     return perform(state, operation, payload);
   };
-  root.innerHTML = '<h1 class="heading">ديوان القضايا</h1><div class="card diwan-panel" aria-live="polite"></div>';
+  root.innerHTML = `
+    <div class="section-head diwan-header">
+      <h1 class="heading">ديوان القضايا</h1>
+      <button type="button" class="btn btn-soft diwan-lock" hidden>قفل الديوان</button>
+    </div>
+    <div class="diwan-panel"></div>`;
   const panel = root.querySelector('.diwan-panel');
+  const lock = root.querySelector('.diwan-lock');
+  let workspace;
 
   function showGate(status) {
     if (!current()) return;
+    workspace?.abort();
     panel.replaceChildren();
+    panel.classList.toggle('card',status !== 'unlocked');
+    lock.hidden = status !== 'unlocked';
     if (status === 'unlocked') {
-      const lock = document.createElement('button');
-      lock.className = 'btn btn-soft';
-      lock.textContent = 'قفل الديوان';
-      const frame = document.createElement('iframe');
-      frame.title = 'ديوان القضايا';
-      frame.sandbox = 'allow-scripts allow-downloads allow-modals';
-      frame.className = 'diwan-frame';
-      const methods = new Set(['load','save','setting','audit','theme']);
-      const themeKey = 'fourth-circuit:diwan-theme:' + actor;
-      const themes = new Set(['organizer','navy-gold','petrol-copper','burgundy-champagne','slate-gold','mint-lemon']);
-      frame.src = './diwan/index.html';
-      frame.addEventListener('load', () => {
-        if (!current()) frame.remove();
-      });
-      const handle = async event => {
-        if (!current() || !frame.isConnected || event.source !== frame.contentWindow || event.origin !== 'null') return;
-        const data = event.data;
-        if (data?.diwan !== 'request' || !Number.isSafeInteger(data.id) || !methods.has(data.operation)) return;
-        const reply = {diwan:'response', id:data.id};
-        try {
-          if (await request('gate',{action:'status'}) !== 'unlocked') {
-            showGate('locked');
-            return;
-          }
-          if (data.operation === 'theme') {
-            if (themes.has(data.payload?.key)) localStorage.setItem(themeKey,data.payload.key);
-            reply.value = localStorage.getItem(themeKey);
-          } else {
-            reply.value = await request(data.operation,data.payload);
-          }
-        } catch { reply.error = 'تعذّر حفظ أو تحميل بيانات الديوان. تحقّق من الجلسة وحاول مرة أخرى.'; }
-        if (current() && frame.isConnected) frame.contentWindow.postMessage(reply, '*');
-      };
-      const listener = new AbortController();
-      addEventListener('message',handle,{signal:listener.signal});
-      const checkExpiry = setInterval(async () => {
-        try {
-          if (await request('gate',{action:'status'}) !== 'unlocked' && frame.isConnected) showGate('locked');
-        } catch { if (frame.isConnected) showGate('locked'); }
-      }, 30000);
+      const controller = new AbortController();
+      workspace = controller;
+      const {signal} = controller;
       const detached = new MutationObserver(() => {
-        if (!frame.isConnected) { clearInterval(checkExpiry); listener.abort(); detached.disconnect(); }
+        if (!current()) controller.abort();
       });
       detached.observe(root.closest('#app') ?? document.body,{childList:true,subtree:true});
+      const guarded = async (operation,payload) => {
+        if (signal.aborted) throw Error('أُغلق ديوان القضايا.');
+        const access = await request('gate',{action:'status'});
+        if (signal.aborted) throw Error('أُغلق ديوان القضايا.');
+        if (access !== 'unlocked') {
+          showGate(access);
+          throw Error('انتهت صلاحية فتح الديوان.');
+        }
+        return request(operation,payload);
+      };
+      const checkExpiry = setInterval(async () => {
+        try {
+          const access = await request('gate',{action:'status'});
+          if (!signal.aborted && access !== 'unlocked') showGate(access);
+        } catch { if (!signal.aborted) showGate('locked'); }
+      },30000);
+      signal.addEventListener('abort',()=>{
+        clearInterval(checkExpiry);
+        detached.disconnect();
+      },{once:true});
       lock.onclick = async () => {
+        lock.disabled = true;
         try { showGate(await request('gate',{action:'lock'})); }
         catch { lock.textContent = 'تعذّر القفل. حاول مرة أخرى.'; }
+        finally { lock.disabled = false; }
       };
+      try { mountDiwanWorkspace(panel,guarded,signal); }
+      catch (error) {
+        controller.abort();
+        lock.hidden = true;
+        panel.textContent = 'تعذّر فتح واجهة ديوان القضايا. أعد تحميل الصفحة.';
+        console.error('Diwan workspace initialization failed',error);
+        return;
+      }
       const change = document.createElement('details');
+      change.className = 'card diwan-security';
       const summary = document.createElement('summary');
       summary.textContent = 'تغيير رمز الديوان';
       const form = document.createElement('form');
       const fields = ['الرمز الحالي','الرمز الجديد','تأكيد الرمز الجديد'].map((name,index) => {
         const input = document.createElement('input');
         input.type = 'password';
-        input.className = 'field';
+        input.className = 'input';
         input.required = true;
         input.minLength = 8;
         input.maxLength = 128;
@@ -161,11 +167,12 @@ export async function mountDiwan(state) {
         finally {save.disabled=false;}
       };
       change.append(summary,form,result);
-      panel.append(lock,change,frame);
+      panel.querySelector('#diwan-security-settings').replaceChildren(change);
       return;
     }
 
     const label = document.createElement('p');
+    label.setAttribute('role','status');
     label.textContent = gateLabels[status] ?? gateLabels.locked;
     panel.append(label);
     if (status === 'forbidden') return;
@@ -176,7 +183,7 @@ export async function mountDiwan(state) {
     input.maxLength = 128;
     input.required = true;
     input.autocomplete = status === 'setup' ? 'new-password' : 'current-password';
-    input.className = 'field';
+    input.className = 'input';
     input.setAttribute('aria-label','رمز ديوان القضايا');
     const button = document.createElement('button');
     button.className = 'btn btn-primary';

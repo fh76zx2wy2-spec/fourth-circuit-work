@@ -1,4 +1,4 @@
-import {canShowDiwan, loadDiwanAccess, mountDiwan} from './diwan-panel.js';
+import {canShowDiwan, loadDiwanAccess, mountDiwan} from './diwan-panel.js?v=5.0.39';
 /* تنظيم أعمال الدائرة الرابعة: GitHub Pages frontend + restricted Supabase backend */
 const CONFIG = window.APP_CONFIG || {};
 const DEMO = !CONFIG.supabaseUrl || !CONFIG.supabasePublishableKey;
@@ -19,6 +19,7 @@ const $ = (s) => document.querySelector(s);
 const latinDigits=(value='')=>String(value??'').replace(/[٠-٩۰-۹]/g,digit=>
  String(digit.charCodeAt(0)-(digit<='٩'?0x660:0x6f0)));
 function normalizeNumberInput(input){
+ if(input.closest('#diwan-slot'))return;
  if(!input.matches('input[type="text"],input[type="search"],input:not([type]),input#account-password,textarea'))return;
  const value=latinDigits(input.value);
  if(value===input.value)return;
@@ -169,7 +170,9 @@ function navigate(screen,taskId=null){if(screen==='diwan'&&!canShowDiwan(state))
 function shell(){
  const n=state.unreadCount??0;
  const nav=[['dashboard','الرئيسية',icons.dashboard],['cases','الجلسات',icons.cases],['tasks','المهام والمتابعة',icons.tasks],['hearings','توزيع الجلسات',icons.calendar]];
- if(canShowDiwan(state))nav.push(['diwan','ديوان القضايا',icons.cases]);
+ const diwanAccess=canShowDiwan(state);
+ if(diwanAccess)nav.push(['diwan','ديوان القضايا',icons.cases]);
+ const inDiwan=state.screen==='diwan'&&diwanAccess;
  const currentSection=state.screen==='poster'?'cases':state.screen;
  const navCurrent=key=>currentSection===key?' aria-current="page"':'';
  const taskCount=state.tasks.filter(t=>myAssignment(t)&&!myAssignment(t).executed_at).length;
@@ -178,10 +181,10 @@ function shell(){
    <div class="sidebar-caption">القائمة الرئيسية</div><nav class="nav" aria-label="القائمة الرئيسية">${nav.map(([key,label,icon])=>`<button data-nav="${key}"${navCurrent(key)} class="${currentSection===key?'active':''}"><span class="nav-icon" aria-hidden="true">${icon}</span><span>${label}</span>${key==='tasks'&&taskCount?`<span class="nav-count" aria-hidden="true">${taskCount}</span>`:''}</button>`).join('')}</nav>
    <div class="sidebar-bottom"><div class="profile-mini"><span class="avatar">${esc((state.profile?.display_name||'ت')[0])}</span><div><b>${esc(state.profile?.display_name||'النسخة التجريبية')}</b><small>${roleTitle(state.profile?.role)}</small></div></div><button class="side-switch" data-action="logout">↩ ${DEMO?'تبديل المستخدم':'تسجيل الخروج'}</button></div>
   </aside><main class="main"><header class="topbar ministry-top"><div class="topbar-heading"><div class="topbar-title">${APP_NAME}</div><div class="topbar-date">${hijri(todayRiyadh())} <span>·</span> ${gregorian(todayRiyadh())} <span>·</span> <time class="topbar-clock" data-riyadh-clock dir="ltr" title="توقيت الرياض">${riyadhClock()}</time></div></div><div class="toolbar"><span class="header-profile">${esc(state.profile?.display_name||'')}</span><button class="icon-button mobile-logout" data-action="logout" title="${DEMO?'تبديل الاسم':'تسجيل خروج'}">⇄</button><button class="icon-button" data-action="refresh" title="تحديث البيانات">↻</button><button class="icon-button notification-bell" data-action="toggle-notifs" title="الإشعارات">◌ ${n?`<span class="notif-count">${n}</span>`:''}</button></div>${state.showNotifs?renderNotifPopup():''}</header>
-  <div class="content"><nav class="service-tiles" aria-label="أقسام الدائرة">
+  <div class="content">${inDiwan?'':`<nav class="service-tiles" aria-label="أقسام الدائرة">
    ${nav.map(([key,label,icon])=>`<button class="service-tile ${currentSection===key?'active':''}" data-nav="${key}"${navCurrent(key)}><span class="tile-symbol" aria-hidden="true">${icon}</span><span>${label}</span></button>`).join('')}
-  </nav>${DEMO?`<div class="banner"><strong>واجهة تجريبية فارغة — الحفظ محلي حاليًا</strong>لا يوجد اتصال بقاعدة بيانات مشتركة بعد؛ ما يُحفظ هنا يبقى على هذا الجهاز فقط. يرجى عدم إدخال محاضر أو بيانات قضايا حقيقية حتى اكتمال الربط الآمن.</div>`:''}
-  ${state.screen==='submission'?submissionPage():state.screen==='dashboard'?dashboard():state.screen==='tasks'?tasksPage():state.screen==='hearings'?'<div id="hearings-slot"></div>':state.screen==='diwan'&&canShowDiwan(state)?'<section id="diwan-slot"></section>':sessionsPage()}</div></main></div>${state.editorId!==null?editorModal():''}${state.detailId!==null?detailModal():''}${state.taskEditorId!==null?taskEditor():''}${bulkEntry?bulkEditor():''}`;
+  </nav>`}${DEMO?`<div class="banner"><strong>واجهة تجريبية فارغة — الحفظ محلي حاليًا</strong>لا يوجد اتصال بقاعدة بيانات مشتركة بعد؛ ما يُحفظ هنا يبقى على هذا الجهاز فقط. يرجى عدم إدخال محاضر أو بيانات قضايا حقيقية حتى اكتمال الربط الآمن.</div>`:''}
+  ${state.screen==='submission'?submissionPage():state.screen==='dashboard'?dashboard():state.screen==='tasks'?tasksPage():state.screen==='hearings'?'<div id="hearings-slot"></div>':inDiwan?'<section id="diwan-slot" aria-label="ديوان القضايا"></section>':sessionsPage()}</div></main></div>${state.editorId!==null?editorModal():''}${state.detailId!==null?detailModal():''}${state.taskEditorId!==null?taskEditor():''}${bulkEntry?bulkEditor():''}`;
 }
 const senderNames=new Set(['يحيى محمد إبراهيم بكري','عبد الرحمن يحيى علي الشريف']);
 const isSubmissionSender=()=>!DEMO&&state.profile?.role==='secretary'&&senderNames.has(state.profile.display_name);

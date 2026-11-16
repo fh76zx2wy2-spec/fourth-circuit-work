@@ -1,0 +1,198 @@
+/* Layout for the Diwan workspace. The organizer supplies the palette and controls. */
+#diwan-slot {
+  --mint-dark: var(--green);
+  --mint: var(--green);
+  --mint-soft: var(--border);
+  --mint-pale: var(--green-bg);
+  --lemon-text: var(--amber);
+  --lemon-soft: var(--amber-bg);
+  --ivory: var(--text);
+  --g: var(--green);
+  --line: var(--border);
+  --text-primary: var(--text);
+  --text-secondary: var(--muted);
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  scroll-margin-block-start: 12px;
+}
+
+#diwan-slot [hidden] { display: none !important; }
+#diwan-slot .diwan-header,
+#diwan-slot .diwan-page-head { align-items: center; gap: 12px; margin: 0 0 16px; }
+#diwan-slot .diwan-header .heading { margin: 0; }
+#diwan-slot .diwan-page-head h2 { margin: 0; }
+#diwan-slot .diwan-page-head h2:focus { outline: none; }
+#diwan-slot .diwan-page-head p { margin: 5px 0 0; color: var(--muted); }
+#diwan-slot .diwan-navigation,
+#diwan-slot .diwan-case-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  margin-block-end: 20px;
+  max-inline-size: 720px;
+}
+#diwan-slot .diwan-case-tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-inline-size: 580px;
+  margin-block-end: 12px;
+}
+#diwan-slot .seg button {
+  min-inline-size: 0;
+  min-block-size: 44px;
+  padding: 6px 4px;
+  line-height: 1.35;
+  overflow-wrap: normal;
+}
+#diwan-slot .diwan-status { color: var(--text); margin: 0 0 12px; }
+#diwan-slot .diwan-status:empty { display: none; }
+#diwan-slot .diwan-panel.card { padding: 20px; max-inline-size: 520px; }
+#diwan-slot .diwan-panel.card p { margin-block-start: 0; }
+#diwan-slot .diwan-panel form,
+#diwan-slot .diwan-actions,
+#diwan-slot .diwan-searchbar,
+#diwan-slot .bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#diwan-slot .diwan-panel form .input { flex: 1 1 180px; min-inline-size: 0; }
+#diwan-slot .btn,
+#diwan-slot .icon-button { min-block-size: 44px; white-space: normal; }
+#diwan-slot .icon-button { min-inline-size: 44px; }
+#diwan-slot input:not([type=checkbox], [type=radio]),
+#diwan-slot textarea,
+#diwan-slot select { max-inline-size: 100%; min-inline-size: 0; }
+#diwan-slot .diwan-search,
+#diwan-slot .diwan-searchbar .search { inline-size: 100%; min-block-size: 44px; }
+#diwan-slot .diwan-searchbar .search { flex: 1 1 150px; inline-size: auto; }
+#diwan-slot .diwan-searchbar { margin-block-end: 12px; }
+#diwan-slot .diwan-filter-button.hasFilter { background: var(--green-bg); border-color: var(--green); }
+#diwan-slot .diwan-filter-button.hasFilter .dot {
+  position: absolute; inset-inline-end: 5px; inset-block-start: 5px;
+  inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--green);
+}
+#diwan-slot .exportMenuWrap { position: relative; flex: 0 0 auto; }
+#diwan-slot .exportMenu {
+  display: none; position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + 5px);
+  z-index: 22; inline-size: min(220px, 70vw); padding: 4px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+  box-shadow: var(--shadow);
+}
+#diwan-slot .exportMenu.open { display: grid; }
+#diwan-slot .exportMenu button { text-align: start; min-block-size: 44px; }
+#diwan-slot .diwan-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-block: 14px 20px;
+}
+#diwan-slot .diwan-stats .stat { min-block-size: 0; text-align: start; }
+#diwan-slot .diwan-stats .stat-number { display: block; }
+#diwan-slot .grid,
+#diwan-slot #trashList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr));
+  gap: 12px;
+}
+#diwan-slot .grid > *,
+#diwan-slot .fields > *,
+#diwan-slot .card { min-inline-size: 0; }
+#diwan-slot .diwan-page .card { padding: 16px; }
+#diwan-slot .card :is(h3, p) { margin-block: 8px; }
+#diwan-slot .card-head,
+#diwan-slot .review-head,
+#diwan-slot #trashList footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+#diwan-slot .meta,
+#diwan-slot .note { color: var(--muted); font-size: .85rem; }
+#diwan-slot .diwan-case-link { padding: 0 4px; margin-inline-start: -4px; }
+#diwan-slot .diwan-case-link:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+#diwan-slot .case-details-list { display: grid; gap: 0; }
+#diwan-slot .diwan-entry textarea {
+  display: block; inline-size: 100%; min-block-size: 130px;
+  padding: 12px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--panel); color: var(--text); resize: vertical;
+}
+#diwan-slot .diwan-entry .bar { justify-content: flex-end; margin-block-start: 10px; }
+#diwan-slot .review,
+#diwan-slot .suggestion-card,
+#diwan-slot .filterpanel {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 14px; margin-block: 12px; background: var(--panel);
+}
+#diwan-slot .filterpanel {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr));
+  gap: 10px;
+}
+#diwan-slot .filterpanel label,
+#diwan-slot .fields label { color: var(--text); display: block; margin-block-end: 4px; }
+#diwan-slot .filterpanel select,
+#diwan-slot .ssel-input,
+#diwan-slot .multichecklist > input {
+  inline-size: 100%; min-block-size: 44px; padding: 8px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+}
+#diwan-slot .ssel { position: relative; }
+#diwan-slot .ssel-list {
+  position: relative; z-index: 2; max-block-size: 200px; overflow: auto;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--panel);
+}
+#diwan-slot .ssel-item { min-block-size: 44px; padding: 10px 8px; cursor: pointer; }
+#diwan-slot .ssel-item:hover,
+#diwan-slot .ssel-item-active { background: var(--green-bg); }
+#diwan-slot .multichecklist { padding: 6px; border: 1px solid var(--border); border-radius: 6px; }
+#diwan-slot .multichecklist label { min-block-size: 36px; display: flex; align-items: center; gap: 6px; }
+#diwan-slot :is(input[type=checkbox],input[type=radio]) { accent-color: var(--green); }
+#diwan-slot .chipsline,
+#diwan-slot .classification { display: flex; flex-wrap: wrap; gap: 6px; }
+#diwan-slot .chipsline span,
+#diwan-slot .confidence-badge { padding: 4px 7px; border-radius: 5px; background: var(--green-bg); color: var(--green); }
+#diwan-slot .confidence-medium,
+#diwan-slot .confidence-manual,
+#diwan-slot .badge.warn { color: var(--amber); background: var(--amber-bg); }
+#diwan-slot .confidence-insufficient { color: var(--red); background: var(--red-bg); }
+#diwan-slot .tree details {
+  border: 1px solid var(--border); border-radius: 6px;
+  padding-inline: 12px; background: var(--panel); margin-block-end: 8px;
+}
+#diwan-slot summary { min-block-size: 44px; padding: 13px 0; cursor: pointer; color: var(--green); font-weight: 600; }
+#diwan-slot .tree ul { list-style: none; padding: 0; margin: 0 0 8px; }
+#diwan-slot .tree li { display: flex; gap: 6px; padding-block: 3px; }
+#diwan-slot .tree li .diwan-subcategory { flex: 1; justify-content: flex-start; text-align: start; }
+#diwan-slot #settings > .card,
+#diwan-slot .diwan-security { margin-block: 0 12px; }
+#diwan-slot .diwan-advanced > div { display: grid; gap: 10px; }
+#diwan-slot .diwan-dialog {
+  inline-size: min(680px, calc(100% - 24px));
+  max-inline-size: 100%;
+  max-block-size: min(88dvh, 760px);
+  margin: auto; padding: 18px;
+  color: var(--text);
+  background: var(--panel); border: 1px solid var(--border); border-radius: 9px;
+  box-shadow: var(--shadow); overscroll-behavior: contain;
+}
+#diwan-slot .diwan-dialog::backdrop { background: rgb(6 56 48 / 48%); }
+#diwan-slot .diwan-dialog table { max-inline-size: 100%; }
+#diwan-slot .diwan-dialog td { overflow-wrap: anywhere; }
+body:has(#diwan-slot dialog[open]) { overflow: hidden; }
+
+@media(max-width: 600px) {
+  #diwan-slot .diwan-header,
+  #diwan-slot .diwan-page-head { margin-block-end: 12px; }
+  #diwan-slot .diwan-navigation { gap: 2px; margin-block-end: 14px; }
+  #diwan-slot .diwan-navigation button { font-size: clamp(10px, 3.1vw, 13px); }
+  #diwan-slot .diwan-case-tabs button { font-size: .76rem; }
+  #diwan-slot .diwan-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #diwan-slot .diwan-stats .stat { padding: 10px 12px; }
+  #diwan-slot .grid,
+  #diwan-slot #trashList { grid-template-columns: minmax(0, 1fr); }
+  #diwan-slot .diwan-dialog { padding: 12px; }
+  #diwan-slot .fields { grid-template-columns: minmax(0, 1fr) !important; }
+  #diwan-slot input:not([type=checkbox], [type=radio]),
+  #diwan-slot select,
+  #diwan-slot textarea { font-size: 16px !important; }
+}
+
+@media(prefers-reduced-motion: reduce) {
+  #diwan-slot *, #diwan-slot *::before, #diwan-slot *::after { scroll-behavior: auto; }
+}

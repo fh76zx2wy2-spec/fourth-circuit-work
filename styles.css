@@ -272,7 +272,3 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 @media(max-width:480px){.task-list-filters .search{flex-basis:100%}.task-list-filters select{flex:1 1 8rem}.task-views button{flex:1 1 auto;justify-content:center}}
 
 .task-compact:not([open])>.task-card-body{display:none}
-
-.diwan-panel { padding: 1rem; }
-.diwan-panel form { display:flex; flex-wrap:wrap; gap:.6rem; }
-.diwan-frame { display:block; width:100%; height:clamp(420px,75vh,850px); margin-top:.75rem; border:0; }
