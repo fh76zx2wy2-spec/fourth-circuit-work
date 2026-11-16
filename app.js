@@ -1,4 +1,4 @@
-import {canShowDiwan, loadDiwanAccess, mountDiwan} from './diwan-panel.js?v=5.0.39';
+import {canShowDiwan, loadDiwanAccess, mountDiwan} from './diwan-panel.js?v=5.0.40';
 /* تنظيم أعمال الدائرة الرابعة: GitHub Pages frontend + restricted Supabase backend */
 const CONFIG = window.APP_CONFIG || {};
 const DEMO = !CONFIG.supabaseUrl || !CONFIG.supabasePublishableKey;

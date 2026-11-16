@@ -196,3 +196,8 @@ body:has(#diwan-slot dialog[open]) { overflow: hidden; }
 @media(prefers-reduced-motion: reduce) {
   #diwan-slot *, #diwan-slot *::before, #diwan-slot *::after { scroll-behavior: auto; }
 }
+
+#diwan-slot .diwan-device-list { display: grid; gap: 8px; margin-block-end: 12px; }
+#diwan-slot .diwan-device-list > div { justify-content: space-between; }
+#diwan-slot .diwan-security > [role="status"]:empty,
+#diwan-slot .diwan-actions > [role="status"]:empty { display: none; }

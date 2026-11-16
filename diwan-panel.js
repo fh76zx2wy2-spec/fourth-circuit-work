@@ -1,4 +1,5 @@
 import {mountDiwanWorkspace} from './diwan/workspace.js?v=1';
+import {addPasskeySettings,addPasskeyUnlock} from './diwan/passkeys.js?v=1';
 
 const gateLabels = {
   locked: 'أدخل رمز ديوان القضايا.',
@@ -20,6 +21,19 @@ async function readPages(table, columns, key) {
 
 async function perform(state, operation, payload = {}) {
   const client = state.client;
+  if (operation === 'access') {
+    const started=Date.now();
+    const monotonic=performance.now();
+    const {data,error}=await client.rpc('diwan_access');
+    if (error) throw error;
+    const remaining=Number(data.remainingMs);
+    return {...data,deadline:started+remaining,timerDeadline:monotonic+remaining};
+  }
+  if (operation === 'passkey') {
+    const {data,error}=await client.functions.invoke('diwan-passkeys',{body:payload});
+    if (error) throw error;
+    return data;
+  }
   if (operation === 'gate') {
     const {data,error} = await client.rpc('diwan_gate', {action:payload.action, code:payload.code ?? null, new_code:payload.newCode ?? null});
     if (error) throw error;
@@ -74,56 +88,75 @@ export async function mountDiwan(state) {
   root.innerHTML = `
     <div class="section-head diwan-header">
       <h1 class="heading">ديوان القضايا</h1>
-      <button type="button" class="btn btn-soft diwan-lock" hidden>قفل الديوان</button>
+      <button type="button" class="btn btn-soft diwan-lock" hidden>قفل الديوان الآن</button>
     </div>
     <div class="diwan-panel"></div>`;
   const panel = root.querySelector('.diwan-panel');
   const lock = root.querySelector('.diwan-lock');
-  let workspace;
+  let view;
+  const detached=new MutationObserver(()=>{
+    if (!current()) {
+      view?.abort();
+      detached.disconnect();
+    }
+  });
+  detached.observe(root.closest('#app') ?? document.body,{childList:true,subtree:true});
 
-  function showGate(status) {
+  function showGate(access) {
     if (!current()) return;
-    workspace?.abort();
+    view?.abort();
+    view=new AbortController();
+    const {signal}=view;
+    const status=expiredAccess(access) ? 'locked' : access.status;
     panel.replaceChildren();
     panel.classList.toggle('card',status !== 'unlocked');
-    lock.hidden = status !== 'unlocked';
+    lock.hidden=status!=='unlocked';
     if (status === 'unlocked') {
-      const controller = new AbortController();
-      workspace = controller;
-      const {signal} = controller;
-      const detached = new MutationObserver(() => {
-        if (!current()) controller.abort();
-      });
-      detached.observe(root.closest('#app') ?? document.body,{childList:true,subtree:true});
-      const guarded = async (operation,payload) => {
-        if (signal.aborted) throw Error('أُغلق ديوان القضايا.');
-        const access = await request('gate',{action:'status'});
-        if (signal.aborted) throw Error('أُغلق ديوان القضايا.');
-        if (access !== 'unlocked') {
-          showGate(access);
+      let refreshing=false;
+      const enforce=()=>{
+        if (!signal.aborted && expiredAccess(access)) showGate({status:'locked'});
+        return !signal.aborted;
+      };
+      const guarded=async(operation,payload)=>{
+        if (!enforce()) throw Error('أُغلق ديوان القضايا.');
+        const status=await request('gate',{action:'status'});
+        if (!enforce()) throw Error('أُغلق ديوان القضايا.');
+        if (status!=='unlocked') {
+          showGate({status});
           throw Error('انتهت صلاحية فتح الديوان.');
         }
         return request(operation,payload);
       };
-      const checkExpiry = setInterval(async () => {
+      const verify=async()=>{
+        if (!enforce() || refreshing) return;
+        refreshing=true;
         try {
-          const access = await request('gate',{action:'status'});
-          if (!signal.aborted && access !== 'unlocked') showGate(access);
-        } catch { if (!signal.aborted) showGate('locked'); }
-      },30000);
+          const latest=await request('access');
+          if (!signal.aborted && (latest.status!=='unlocked' || expiredAccess(latest))) showGate(latest);
+        } catch {if (!signal.aborted) showGate({status:'locked'});}
+        finally {refreshing=false;}
+      };
+      let enforceTimer;
+      function scheduleExpiry() {
+        if (enforce()) enforceTimer=setTimeout(scheduleExpiry,
+          Math.max(1,Math.ceil(Math.min(access.timerDeadline-performance.now(),access.deadline-Date.now()))));
+      }
+      scheduleExpiry();
+      const refreshTimer=setInterval(verify,30000);
+      const onVisible=()=>{if (!document.hidden) void verify();};
+      document.addEventListener('visibilitychange',onVisible,{signal});
+      window.addEventListener('pageshow',onVisible,{signal});
       signal.addEventListener('abort',()=>{
-        clearInterval(checkExpiry);
-        detached.disconnect();
+        clearTimeout(enforceTimer);
+        clearInterval(refreshTimer);
       },{once:true});
-      lock.onclick = async () => {
-        lock.disabled = true;
-        try { showGate(await request('gate',{action:'lock'})); }
-        catch { lock.textContent = 'تعذّر القفل. حاول مرة أخرى.'; }
-        finally { lock.disabled = false; }
+      lock.onclick=()=>{
+        showGate({status:'locking'});
+        void lockServer();
       };
       try { mountDiwanWorkspace(panel,guarded,signal); }
       catch (error) {
-        controller.abort();
+        view.abort();
         lock.hidden = true;
         panel.textContent = 'تعذّر فتح واجهة ديوان القضايا. أعد تحميل الصفحة.';
         console.error('Diwan workspace initialization failed',error);
@@ -167,7 +200,10 @@ export async function mountDiwan(state) {
         finally {save.disabled=false;}
       };
       change.append(summary,form,result);
-      panel.querySelector('#diwan-security-settings').replaceChildren(change);
+      const security=panel.querySelector('#diwan-security-settings');
+      security.replaceChildren(change);
+      void addPasskeySettings(security,actor,payload=>guarded('passkey',payload),
+        ()=>showGate({status:'locked'}),signal);
       return;
     }
 
@@ -176,6 +212,22 @@ export async function mountDiwan(state) {
     label.textContent = gateLabels[status] ?? gateLabels.locked;
     panel.append(label);
     if (status === 'forbidden') return;
+    if (status === 'locking') {
+      label.textContent='جارٍ قفل الديوان…';
+      return;
+    }
+    if (status === 'lock-error') {
+      label.textContent='أُخفيت بيانات الديوان. تعذّر تأكيد القفل على الخادم.';
+      const retry=document.createElement('button');
+      retry.className='btn btn-soft';
+      retry.textContent='إعادة محاولة القفل';
+      retry.onclick=()=>{
+        showGate({status:'locking'});
+        void lockServer();
+      };
+      panel.append(retry);
+      return;
+    }
     const form = document.createElement('form');
     const input = document.createElement('input');
     input.type = 'password';
@@ -196,13 +248,32 @@ export async function mountDiwan(state) {
       input.value = '';
       try {
         const result = await request('gate',{action:status === 'setup' ? 'setup' : 'unlock',code});
-        if (['setup','locked','unlocked','forbidden'].includes(result)) showGate(result);
+        if (result==='unlocked') await openCurrentAccess();
+        else if (['setup','locked','forbidden'].includes(result)) showGate({status:result});
         else label.textContent = gateLabels[result] ?? gateLabels.invalid;
       } catch { label.textContent = 'تعذّر التحقق من الرمز.'; }
       finally { button.disabled = false; }
     };
     panel.append(form);
+    if (status==='locked') void addPasskeyUnlock(panel,actor,payload=>request('passkey',payload),openCurrentAccess,signal);
   }
-  try { showGate(await request('gate',{action:'status'})); }
+
+  function expiredAccess(access) {
+    return access.status==='unlocked' &&
+      (!Number.isFinite(access.deadline) || !Number.isFinite(access.timerDeadline) ||
+        Date.now()>=access.deadline || performance.now()>=access.timerDeadline);
+  }
+
+  async function openCurrentAccess() {
+    showGate(await request('access'));
+  }
+
+  async function lockServer() {
+    try {showGate({status:await request('gate',{action:'lock'})});}
+    catch {showGate({status:'lock-error'});}
+  }
+
+  try {await openCurrentAccess();}
+
   catch { panel.textContent = 'تعذّر الاتصال بقاعدة الديوان.'; }
 }
