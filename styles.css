@@ -272,3 +272,22 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 @media(max-width:480px){.task-list-filters .search{flex-basis:100%}.task-list-filters select{flex:1 1 8rem}.task-views button{flex:1 1 auto;justify-content:center}}
 
 .task-compact:not([open])>.task-card-body{display:none}
+
+#organizer-passkey-login:not(:empty) { margin-block-start: 12px; }
+#organizer-passkey-login .btn { width: 100%; min-height: 44px; }
+#organizer-passkey-login [role="status"]:empty { display: none; }
+.organizer-passkey-dialog {
+  width: min(500px, calc(100% - 24px)); max-height: 88dvh; padding: 18px;
+  border: 1px solid var(--border); border-radius: 9px;
+  background: var(--panel); color: var(--text);
+}
+.organizer-passkey-dialog::backdrop { background: rgb(6 56 48 / 48%); }
+.organizer-passkey-dialog .btn { min-height: 44px; }
+.organizer-passkey-dialog :is(form:not([hidden]), .diwan-actions) {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+}
+.organizer-passkey-dialog .diwan-actions { justify-content: space-between; margin-block: 6px; }
+.organizer-passkey-dialog input { min-width: 0; max-width: 100%; flex: 1 1 160px; }
+.organizer-passkey-dialog details { padding: 12px; }
+.organizer-passkey-dialog summary { font-weight: 700; cursor: pointer; }
+.organizer-passkey-dialog [role="status"]:empty { display: none; }

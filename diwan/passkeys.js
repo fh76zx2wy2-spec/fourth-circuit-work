@@ -63,11 +63,11 @@ function serialize(credential,create) {
     clientExtensionResults:credential.getClientExtensionResults(),
   };
 }
-async function finish(kind,device,ceremony,credential,invoke) {
+async function finish(scope,kind,device,ceremony,credential,invoke) {
   if (!credential) throw Error('أُلغيت المصادقة.');
   const proof=await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},device.privateKey,
-    new TextEncoder().encode(`diwan/${kind}/${ceremony.options.challenge}`));
-  await invoke({action:`${kind}-verify`,challengeId:ceremony.challengeId,
+    new TextEncoder().encode(`${scope}/${kind}/${ceremony.options.challenge}`));
+  return invoke({action:`${kind}-verify`,challengeId:ceremony.challengeId,
     credential:serialize(credential,kind==='register'),proof:toBase64(proof)});
 }
 
@@ -80,13 +80,14 @@ const statusLine = () => {
   return line;
 };
 
-export async function addPasskeyUnlock(container,owner,invoke,onSuccess,signal) {
+export async function addPasskeyUnlock(container,owner,invoke,onSuccess,signal,scope='diwan') {
+  const isOrganizer=scope==='organizer';
   if (!await platformAvailable() || signal.aborted) return;
   let device;
   try {device=await registeredDevice(owner);}
   catch {return;}
   if (!device || signal.aborted) return;
-  const button=actionButton('فتح بمفتاح المرور');
+  const button=actionButton(isOrganizer?'الدخول بمفتاح المرور':'فتح بمفتاح المرور');
   const status=statusLine();
   let ceremony;
   let prompting=false;
@@ -96,7 +97,7 @@ export async function addPasskeyUnlock(container,owner,invoke,onSuccess,signal) 
       ceremony=await invoke({action:'authenticate-options',deviceId:device.id});
       if (!signal.aborted) button.disabled=false;
     } catch {
-      status.textContent='مفتاح هذا المتصفح غير متاح. يمكنك استخدام رمز الديوان.';
+      status.textContent=isOrganizer?'مفتاح هذا المتصفح غير متاح. استخدم كلمة المرور.':'مفتاح هذا المتصفح غير متاح. يمكنك استخدام رمز الديوان.';
     }
   }
   button.onclick=async()=>{
@@ -109,11 +110,11 @@ export async function addPasskeyUnlock(container,owner,invoke,onSuccess,signal) 
     try {
       // Keep the browser prompt in a direct user click, including on Safari.
       const credential=await navigator.credentials.get({publicKey:requestOptions(attempt.options),signal});
-      await finish('authenticate',device,attempt,credential,invoke);
-      if (!signal.aborted) await onSuccess();
+      const result=await finish(scope,'authenticate',device,attempt,credential,invoke);
+      if (!signal.aborted) await onSuccess(result);
     } catch {
       if (signal.aborted) return;
-      status.textContent='تعذّر فتح الديوان بمفتاح المرور. أعد المحاولة أو استخدم الرمز.';
+      status.textContent=isOrganizer?'تعذّر الدخول بمفتاح المرور. أعد المحاولة أو استخدم كلمة المرور.':'تعذّر فتح الديوان بمفتاح المرور. أعد المحاولة أو استخدم الرمز.';
       void prepare();
     } finally {prompting=false;}
   };
@@ -129,17 +130,20 @@ export async function addPasskeyUnlock(container,owner,invoke,onSuccess,signal) 
   await prepare();
 }
 
-export async function addPasskeySettings(container,owner,invoke,onRevoked,signal) {
+export async function addPasskeySettings(container,owner,invoke,onRevoked,signal,scope='diwan') {
+  const isOrganizer=scope==='organizer';
+  const credentialLabel=isOrganizer?'كلمة مرور المنظّم':'رمز الديوان';
+  const confirmRemoval=isOrganizer?'إلغاء اعتماد هذا المتصفح لتسجيل الدخول إلى المنظّم؟':'إلغاء اعتماد هذا المتصفح وقفل جلسات الديوان المفتوحة؟';
   if (signal.aborted) return;
   const section=document.createElement('details');
   section.className='card diwan-security';
   section.innerHTML=`
     <summary>مفاتيح المرور والأجهزة</summary>
-    <p>اعتمد هذا المتصفح برمز الديوان لتفعيل الدخول بمفتاح مرور. يتطلب كل متصفح اعتمادًا مستقلًا.</p>
+    <p>اعتمد هذا المتصفح باستخدام ${credentialLabel} لتفعيل الدخول بمفتاح مرور. يتطلب كل متصفح اعتمادًا مستقلًا.</p>
     <div class="diwan-device-list"></div>
     <form hidden>
       <input class="input" name="deviceLabel" aria-label="اسم الجهاز أو المتصفح" placeholder="اسم الجهاز أو المتصفح" maxlength="80" required>
-      <input class="input" type="password" name="diwanCode" aria-label="رمز الديوان لاعتماد الجهاز" placeholder="رمز الديوان" minlength="8" maxlength="128" autocomplete="current-password" required>
+      <input class="input" type="password" name="diwanCode" aria-label="${credentialLabel} لاعتماد الجهاز" placeholder="${credentialLabel}" minlength="${isOrganizer?1:8}" maxlength="128" autocomplete="current-password" required>
       <button class="btn btn-soft">اعتماد هذا المتصفح</button>
     </form>`;
   const status=statusLine();
@@ -156,7 +160,9 @@ export async function addPasskeySettings(container,owner,invoke,onRevoked,signal
     const {devices}=await invoke({action:'list'});
     if (signal.aborted) return;
     list.replaceChildren();
-    form.hidden=devices.some(item=>item.id===device?.id) || !await platformAvailable();
+    const supported=await platformAvailable();
+    form.hidden=devices.some(item=>item.id===device?.id) || !supported;
+    if (!supported) status.textContent='مفاتيح المرور غير متاحة في هذا المتصفح أو الجهاز.';
     if (!devices.length) {
       const empty=document.createElement('p');
       empty.textContent='لا توجد أجهزة معتمدة.';
@@ -171,14 +177,15 @@ export async function addPasskeySettings(container,owner,invoke,onRevoked,signal
       remove.className='btn btn-soft';
       remove.setAttribute('aria-label','إلغاء اعتماد '+item.name);
       remove.onclick=async()=>{
-        if (!confirm('إلغاء اعتماد هذا المتصفح وقفل جلسات الديوان المفتوحة؟')) return;
+        if (!confirm(confirmRemoval)) return;
         remove.disabled=true;
         try {
           await invoke({action:'revoke',deviceId:item.id});
           if (item.id===device?.id) {
             try {await deviceStore('readwrite',store=>store.delete(owner));} catch { /* Revoked on the server. */ }
           }
-          onRevoked();
+          if (isOrganizer) {if (item.id===device?.id) device=null; await loadDevices();}
+          else onRevoked();
         } catch {
           status.textContent='تعذّر إلغاء الاعتماد.';
           remove.disabled=false;
@@ -189,9 +196,11 @@ export async function addPasskeySettings(container,owner,invoke,onRevoked,signal
     }
   }
 
-  section.addEventListener('toggle',()=>{
+  const refreshDevices=()=>{
     if (section.open) void loadDevices().catch(()=>{status.textContent='تعذّر تحميل الأجهزة المعتمدة.';});
-  },{signal});
+  };
+  section.addEventListener('toggle',refreshDevices,{signal});
+  refreshDevices();
 
   const button=form.querySelector('button');
   const confirmButton=actionButton('تأكيد بمفتاح المرور');
@@ -221,7 +230,7 @@ export async function addPasskeySettings(container,owner,invoke,onRevoked,signal
           if (signal.aborted) return;
           // Confirm persistence before activating the device on the server.
           await storeDevice(owner,candidate);
-          await finish('register',candidate,ceremony,credential,invoke);
+          await finish(scope,'register',candidate,ceremony,credential,invoke);
           device=candidate;
           form.reset();
           status.textContent='اعتمد هذا المتصفح.';
@@ -232,7 +241,7 @@ export async function addPasskeySettings(container,owner,invoke,onRevoked,signal
       };
       confirmButton.focus();
     } catch {
-      if (!signal.aborted) status.textContent='تعذّر اعتماد الجهاز. تحقّق من رمز الديوان وأعد المحاولة.';
+      if (!signal.aborted) status.textContent=isOrganizer?'تعذّر اعتماد الجهاز. تحقّق من كلمة مرور المنظّم وأعد المحاولة.':'تعذّر اعتماد الجهاز. تحقّق من رمز الديوان وأعد المحاولة.';
     } finally {button.disabled=false;}
   };
 }
