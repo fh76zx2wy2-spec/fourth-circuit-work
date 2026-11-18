@@ -1043,6 +1043,7 @@ async function openCaseDetail(caseId){
  state.detailId=caseId;
  state.showSource=false;
  casePreparation=null;
+ void loadCaseHistory(state.cases.find(x=>x.id===caseId)?.case_number);
  if(!isJudge()||!state.client){render();return;}
  const preparation={caseId,actor:actorId(),fields:{},loading:true,message:''};
  casePreparation=preparation;
@@ -1102,11 +1103,58 @@ async function saveCasePreparation(){
  }
 }
 
+// ملف القضية الزمني: الجلسات السابقة المسحوبة من تقاضي (جدول case_session_history).
+let caseHistory=null;
+async function loadCaseHistory(caseNumber){
+ caseHistory=null;
+ if(!caseNumber||!state.client)return;
+ const current={caseNumber,rows:[],loading:true};
+ caseHistory=current;
+ try{
+  const {data,error}=await state.client.from('case_session_history')
+   .select('session_hijri,session_key,minutes,outcome').eq('case_number',caseNumber).order('session_key');
+  if(error)throw error;
+  current.rows=data||[];
+ }catch{current.rows=[];}
+ finally{
+  current.loading=false;
+  if(caseHistory===current){const panel=$('#case-history');if(panel)panel.outerHTML=caseHistoryPanel(state.cases.find(x=>x.id===state.detailId));else if(current.rows.length&&state.detailId!==null)render();}
+ }
+}
+const hijriMonths=['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+const hijriText=v=>{const [d,m,y]=String(v||'').split('/').map(Number);return hijriMonths[m-1]?`${d} ${hijriMonths[m-1]} ${y}هـ`:esc(v);};
+function sessionDecision(row){
+ if(row.outcome)return row.outcome;
+ const clip=(t,n=170)=>t.length>n?t.slice(0,n-3)+'…':t;
+ const tidy=t=>t.replace(/[ً-ْ]/g,'');
+ const tail=t=>t.replace(/[،,]?\s*(و?ختمت|و?أغلقت|والله الموفق).*$/,'').replace(/[،,]?\s*(وعليه|ولأجل ذلك)\s+رفعت الجلسة$/,'').replace(/[،,]\s*$/,'').trim();
+ const parts=latinDigits(row.minutes||'').split(/[.؛\n]+/).map(x=>tidy(x.trim())).filter(Boolean);
+ const verb=/(قررت|أمهل|امهل|أحال|إحالة|مخاطبة|شطب|حكمت|ندب|حجز|رفعت|رفع الجلسة|رفعها)/;
+ const idx=parts.map((x,i)=>verb.test(x)&&!/^(وختمت|ختمت|وأغلقت|أغلقت)/.test(x)?i:-1).filter(i=>i>=0).at(-1);
+ if(idx===undefined)return clip(parts.at(-1)||'');
+ const sentence=tail(parts[idx]);
+ const hits=[...sentence.matchAll(/(?:فقد |وعليه |عليه |لذا |ولأجل ذلك |ولذلك )?قررت(?: الدائرة)?/g)];
+ const start=hits.length?hits.at(-1).index:-1;
+ let text=(start>=0?sentence.slice(start):sentence).replace(/^(فقد|وعليه|عليه|لذا|ولذلك|ولأجل ذلك)\s+/,'');
+ if(/^قررت\s?(الدائرة\s)?(رفع الجلسة|رفعها)$/.test(text)||/^رفعت الجلسة$/.test(text)){
+  let before=start>0?sentence.slice(0,start).replace(/^.*?(ونظرا|ونظراً|نظرا|نظراً|ولما|وحيث|فأجبت|فأجيب)/,'$1').replace(/[،,]?\s*(ففهم|ففهما|واستعدا).*$/,'').replace(/[،,]\s*$/,'').trim():'';
+  if(/افتتحت الجلسة$/.test(before)||before.length<12)before='';
+  if(!before){const prev=parts[idx-1]||'';if(prev&&!/^(هكذا|فقرر|قرر|وقرر)/.test(prev))before=prev.replace(/^.*?(تبين|وجدت|ونظرا|ونظراً|لعدم|لحين)/,'$1');}
+  if(before)text=`${clip(before,115)} ← رُفعت الجلسة`;
+ }
+ return clip(text);
+}
+function caseHistoryPanel(c){
+ if(!c||!caseHistory||caseHistory.caseNumber!==c.case_number||!caseHistory.rows.length)return '<div id="case-history" hidden></div>';
+ const rows=caseHistory.rows;
+ const item=(row,i)=>`<li><div class="history-dot"></div><div class="history-body"><div class="history-head"><b>الجلسة ${i+1}</b><span>${hijriText(row.session_hijri)}</span></div><p>${esc(sessionDecision(row)||'لا يوجد ضبط محفوظ')}</p>${row.minutes?`<details><summary>الضبط كاملًا</summary><div class="source-box">${esc(row.minutes)}</div></details>`:''}</div></li>`;
+ return `<div id="case-history" class="detail-field detail-wide history-card"><small>ملف القضية · ${rows.length} ${rows.length===1?'جلسة سابقة':rows.length===2?'جلستان سابقتان':'جلسات سابقة'}</small><ol class="history-list">${rows.map(item).join('')}<li class="history-now"><div class="history-dot"></div><div class="history-body"><div class="history-head"><b>الجلسة ${rows.length+1}</b><span>${hijriLong(c.session_date)}</span></div></div></li></ol></div>`;
+}
 function detailModal(){
  const c=state.cases.find(x=>x.id===state.detailId);if(!c)return '';
  const info=(title,value,wide=false)=>`<div class="detail-field ${wide?'detail-wide':''}"><small>${title}</small><p>${esc(value||'غير مدخل')}</p></div>`;
  const m=minutesExtract(c),judge=isJudge();
- return `<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>القضية رقم ${caseNumberButton(c.case_number)}</h2><small>${esc(c.case_type)} • ${hijriLong(c.session_date)} • ${tm(c.session_time)}</small></div><button class="icon-button" data-action="close-detail">✕</button></div><div class="modal-body"><div class="status-line"><span class="badge ${esc(c.status)}">${statusTitle(c.status)}</span><span class="pill">${sessionNumberBadge(c)}</span></div><div class="detail-grid" style="margin-top:24px">${info('المدعي',c.plaintiffs)}${info('المدعى عليه',c.defendants)}${info('موضوع الدعوى',c.claim_summary,true)}${info('مُدخل القضية',profileName(c.created_by))}${c.previous_date?info('تاريخ الجلسة الأخيرة',hijriLong(c.previous_date),true):''}${judge?`<div class="detail-field detail-wide summary-card"><small>معاينة مختصرة آلية من الضبط الأصلي</small><p>${esc(m.overview)}</p>${m.evidence?`<small class="summary-label">عبارة ورود رفع الجلسة في المحضر</small><p class="quote-text">${esc(m.evidence)}</p>`:''}<small class="summary-note">هذا استخراج نصي أولي غير معتمد، وقد لا يوضح سبب الرفع بدقة. راجع الأصل دائمًا.</small></div><div class="detail-field detail-wide"><button class="btn btn-soft" data-action="toggle-source">${state.showSource?'إخفاء':'عرض'} ضبط الجلسة السابقة كاملًا</button>${state.showSource?`<div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div>`:''}</div>`:`<div class="detail-field detail-wide"><small>الضبط الأصلي كاملًا</small><div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div></div>`}${outcomeEditor(c)}${judge?preparationPanel():''}<div class="detail-field detail-wide"><small>آخر تحديث</small><p>${stamp(c.updated_at)} • ${esc(profileName(c.updated_by||c.created_by))}</p></div></div></div><div class="modal-foot"><button class="btn" data-action="close-detail">إغلاق</button><button class="btn btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></div></div>`;
+ return `<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>القضية رقم ${caseNumberButton(c.case_number)}</h2><small>${esc(c.case_type)} • ${hijriLong(c.session_date)} • ${tm(c.session_time)}</small></div><button class="icon-button" data-action="close-detail">✕</button></div><div class="modal-body"><div class="status-line"><span class="badge ${esc(c.status)}">${statusTitle(c.status)}</span><span class="pill">${sessionNumberBadge(c)}</span></div><div class="detail-grid" style="margin-top:24px">${info('المدعي',c.plaintiffs)}${info('المدعى عليه',c.defendants)}${info('موضوع الدعوى',c.claim_summary,true)}${info('مُدخل القضية',profileName(c.created_by))}${c.previous_date?info('تاريخ الجلسة الأخيرة',hijriLong(c.previous_date),true):''}${caseHistoryPanel(c)}${judge?`<div class="detail-field detail-wide summary-card"><small>معاينة مختصرة آلية من الضبط الأصلي</small><p>${esc(m.overview)}</p>${m.evidence?`<small class="summary-label">عبارة ورود رفع الجلسة في المحضر</small><p class="quote-text">${esc(m.evidence)}</p>`:''}<small class="summary-note">هذا استخراج نصي أولي غير معتمد، وقد لا يوضح سبب الرفع بدقة. راجع الأصل دائمًا.</small></div><div class="detail-field detail-wide"><button class="btn btn-soft" data-action="toggle-source">${state.showSource?'إخفاء':'عرض'} ضبط الجلسة السابقة كاملًا</button>${state.showSource?`<div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div>`:''}</div>`:`<div class="detail-field detail-wide"><small>الضبط الأصلي كاملًا</small><div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div></div>`}${outcomeEditor(c)}${judge?preparationPanel():''}<div class="detail-field detail-wide"><small>آخر تحديث</small><p>${stamp(c.updated_at)} • ${esc(profileName(c.updated_by||c.created_by))}</p></div></div></div><div class="modal-foot"><button class="btn" data-action="close-detail">إغلاق</button><button class="btn btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></div></div>`;
 }
 function initialTask(){return {title:'',category:'case',case_number:'',details:'',proposed_action:'',due_date:'',priority:'normal',assigned_to:[]};}
 const myAssignment=task=>task.task_assignments?.find(item=>item.assignee_id===actorId());

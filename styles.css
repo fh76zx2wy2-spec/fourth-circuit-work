@@ -291,3 +291,20 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .organizer-passkey-dialog details { padding: 12px; }
 .organizer-passkey-dialog summary { font-weight: 700; cursor: pointer; }
 .organizer-passkey-dialog [role="status"]:empty { display: none; }
+/* ملف القضية الزمني */
+.history-card{background:#fbfaf8;border:1px solid var(--border);border-radius:12px;padding:16px 18px}
+.history-list{list-style:none;margin:10px 0 0;padding:0;position:relative}
+.history-list:before{content:'';position:absolute;top:8px;bottom:8px;right:5px;width:2px;background:#e3ddd5}
+.history-list li{display:flex;gap:13px;position:relative;padding-bottom:14px}
+.history-list li:last-child{padding-bottom:0}
+.history-dot{flex:none;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid #b5a89b;margin-top:6px;z-index:1}
+.history-now .history-dot{background:var(--green);border-color:var(--green)}
+.history-body{min-width:0;flex:1}
+.history-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:12px}
+.history-head span{color:var(--muted);font-size:11px}
+.history-now .history-head b{color:var(--green)}
+.history-body p{margin:4px 0 0;font-size:12.5px;line-height:1.9}
+.history-body details{margin-top:5px}
+.history-body summary{cursor:pointer;color:var(--brown);font-size:11px;list-style:none}
+.history-body summary::-webkit-details-marker{display:none}
+.history-body details .source-box{margin-top:7px}
