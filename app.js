@@ -13,8 +13,10 @@ function riyadhClock(now = new Date()) {
   return `${hour}:${minute}:${second} ${dayPeriod === 'AM' ? 'ص' : 'م'}`;
 }
 function updateClock(){
+  const now=new Date();
   const clock=document.querySelector('[data-riyadh-clock]');
-  if(clock)clock.textContent=riyadhClock();
+  if(clock)clock.textContent=riyadhClock(now);
+  updateCurrentSessionHighlight(now);
 }
 const $ = (s) => document.querySelector(s);
 const latinDigits=(value='')=>String(value??'').replace(/[٠-٩۰-۹]/g,digit=>
@@ -47,8 +49,9 @@ function savedText(value,original){
  return typeof original==='string'&&text===original?original:latinDigits(text).trim();
 }
 const esc = (v = '') => latinDigits(v).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const todayRiyadh = () => {
-  const parts = new Intl.DateTimeFormat('en-US',{timeZone:KSA,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+const riyadhDateFormatter = new Intl.DateTimeFormat('en-US',{timeZone:KSA,year:'numeric',month:'2-digit',day:'2-digit'});
+const todayRiyadh = (now=new Date()) => {
+  const parts = riyadhDateFormatter.formatToParts(now);
   return `${parts.find(x=>x.type==='year').value}-${parts.find(x=>x.type==='month').value}-${parts.find(x=>x.type==='day').value}`;
 };
 const addDays = (iso, days) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate()+days); return d.toISOString().slice(0,10); };
@@ -564,7 +567,40 @@ async function saveSessionOutcome(form){
  }catch{notify('تعذّر حفظ نتيجة الجلسة السابقة.','error');}
  finally{submit.disabled=false;}
 }
-function caseRow(c){const item=priorOutcome(c);return `<article class="case-row"><div class="case-time-slot"><div class="time-pill">${esc(tm(c.session_time))}</div></div><div class="case-content"><div class="case-title">${esc(c.case_type||'قضية دون تصنيف')} <span class="badge ${esc(c.status)}">${c.status==='approved'?'✓ ':''}${statusTitle(c.status)}</span></div><div class="case-sub"><span>رقم ${caseNumberButton(c.case_number)}</span><span>${esc(short(c.plaintiffs,34))} × ${esc(short(c.defendants,34))}</span>${sessionNumberBadge(c)}<span class="byline">أدخله: ${esc(profileName(c.created_by))}</span></div><div class="case-assignee"><span aria-hidden="true">👤</span> <span data-case-assignee="${esc(c.id)}">${esc(assigneeLabel(c))}</span></div>${item?.outcome?`<div class="case-assignee">${outcomeLabel(item)}: ${esc(item.outcome)}</div>`:''}</div><div class="case-row-actions"><button class="btn btn-small" data-detail="${esc(c.id)}">عرض</button><button class="btn btn-small btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></article>`;}
+function sessionStartMinute(time){
+ const match=/^(\d{2}):(\d{2})(?::\d{2})?$/.exec(time??'');
+ if(!match||Number(match[1])>23||Number(match[2])>59)return null;
+ return Number(match[1])*60+Number(match[2]);
+}
+function currentSessionStart(cases,minute){
+ const starts=cases.map(c=>sessionStartMinute(c.session_time)).filter(start=>start!==null);
+ let current=null,next=null;
+ for(const start of starts){
+  if(start<=minute&&(current===null||start>current))current=start;
+  if(start>minute&&(next===null||start<next))next=start;
+ }
+ return current!==null&&(next!==null||minute<current+30)?current:null;
+}
+function updateCurrentSessionHighlight(now=new Date()){
+ if(!['dashboard','cases'].includes(state.screen))return;
+ const rows=document.querySelectorAll('[data-case-session-time]');
+ if(!rows.length)return;
+ let current=null;
+ if(state.filterDate===todayRiyadh(now)){
+  const parts=Object.fromEntries(clockFormatter.formatToParts(now).map(part=>[part.type,part.value]));
+  const minute=(Number(parts.hour)%12+(parts.dayPeriod==='PM'?12:0))*60+Number(parts.minute);
+  current=currentSessionStart(listForDate(),minute);
+ }
+ for(const row of rows){
+  const active=current!==null&&sessionStartMinute(row.dataset.caseSessionTime)===current;
+  if(row.classList.contains('case-session-current')===active)continue;
+  row.classList.toggle('case-session-current',active);
+  row.querySelector('.current-session-label').hidden=!active;
+  if(active)row.setAttribute('aria-current','time');
+  else row.removeAttribute('aria-current');
+ }
+}
+function caseRow(c){const item=priorOutcome(c);return `<article class="case-row" data-case-session-time="${esc(c.session_time)}"><div class="case-time-slot"><div class="time-pill">${esc(tm(c.session_time))}</div><span class="current-session-label" hidden>موعدها الآن</span></div><div class="case-content"><div class="case-title">${esc(c.case_type||'قضية دون تصنيف')} <span class="badge ${esc(c.status)}">${c.status==='approved'?'✓ ':''}${statusTitle(c.status)}</span></div><div class="case-sub"><span>رقم ${caseNumberButton(c.case_number)}</span><span>${esc(short(c.plaintiffs,34))} × ${esc(short(c.defendants,34))}</span>${sessionNumberBadge(c)}<span class="byline">أدخله: ${esc(profileName(c.created_by))}</span></div><div class="case-assignee"><span aria-hidden="true">👤</span> <span data-case-assignee="${esc(c.id)}">${esc(assigneeLabel(c))}</span></div>${item?.outcome?`<div class="case-assignee">${outcomeLabel(item)}: ${esc(item.outcome)}</div>`:''}</div><div class="case-row-actions"><button class="btn btn-small" data-detail="${esc(c.id)}">عرض</button><button class="btn btn-small btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></article>`;}
 function emptyState(){return `<div class="card empty"><span class="empty-icon">▤</span><b>لا توجد قضايا في هذا التاريخ</b><p>يمكن إضافة القضايا وتعديلها في أي وقت خلال الأيام الخمسة القادمة.</p></div>`;}
 function sessionsPage(){
  const report=state.screen==='poster';
@@ -1350,7 +1386,7 @@ function refreshDiwanNotifications(){
  header.querySelector('.notif-pop')?.remove();
  if(state.showNotifs)header.insertAdjacentHTML('beforeend',renderNotifPopup());
 }
-function render(){if(!state.historyDate&&!displayDays().includes(state.filterDate))state.filterDate=displayedWorkday;if(!app)return;if(DEMO&&!state.profile){app.innerHTML=selectUserScreen();return;}if(!DEMO&&!state.user){app.innerHTML=authScreen();bindOrganizerPasskeyLogin();return;}if(!DEMO&&!state.profile?.is_active){app.innerHTML=unavailableAccountScreen();return;}if(state.screen==='diwan'&&canShowDiwan(state)&&$('#diwan-slot')&&state.editorId===null&&state.detailId===null&&state.taskEditorId===null&&!bulkEntry){refreshDiwanNotifications();return;}app.innerHTML=shell();if(state.screen==='diwan'&&canShowDiwan(state))void mountDiwan(state);if(state.screen==='hearings'){assignmentDays.clear();showHearings();}else void refreshCaseAssignments();}
+function render(){if(!state.historyDate&&!displayDays().includes(state.filterDate))state.filterDate=displayedWorkday;if(!app)return;if(DEMO&&!state.profile){app.innerHTML=selectUserScreen();return;}if(!DEMO&&!state.user){app.innerHTML=authScreen();bindOrganizerPasskeyLogin();return;}if(!DEMO&&!state.profile?.is_active){app.innerHTML=unavailableAccountScreen();return;}if(state.screen==='diwan'&&canShowDiwan(state)&&$('#diwan-slot')&&state.editorId===null&&state.detailId===null&&state.taskEditorId===null&&!bulkEntry){refreshDiwanNotifications();return;}app.innerHTML=shell();updateCurrentSessionHighlight();if(state.screen==='diwan'&&canShowDiwan(state))void mountDiwan(state);if(state.screen==='hearings'){assignmentDays.clear();showHearings();}else void refreshCaseAssignments();}
 function selectUserScreen(){return `<div class="choose-screen"><div class="choose-header"><span class="choose-emblem">▦</span><span>${APP_NAME}</span></div><div class="choose-card"><div class="eyebrow">مساحة العمل</div><h1>مرحبًا بك</h1><p>اختر اسمك للدخول، وسيظهر اسمك عند إضافة القضايا والمهام وتعديلها.</p><div class="staff-grid">${STAFF.map(p=>`<button data-person="${esc(p.id)}" class="staff-choice"><span class="staff-avatar">${esc(p.display_name[0])}</span><span><b>${esc(p.display_name)}</b><small>${roleTitle(p.role)}</small></span><span class="staff-arrow">←</span></button>`).join('')}</div><div class="selector-notice">الحفظ الحالي محلي في هذا الجهاز فقط إلى أن تُفعّل قاعدة بيانات مستقلة. اختيار الاسم وحده لا يؤكد هوية الموظف. لا تُدخل معلومات قضائية حقيقية قبل تفعيل الحفظ المشترك المحمي.</div></div><div class="choose-foot">مساحة عمل مستقلة — دون شعار أو انتماء مؤسسي.</div></div>`;}
 const loginChoices=[
  ['abdulrahman',STAFF[2].display_name],

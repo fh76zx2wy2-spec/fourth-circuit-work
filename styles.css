@@ -308,3 +308,22 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .history-body summary{cursor:pointer;color:var(--brown);font-size:11px;list-style:none}
 .history-body summary::-webkit-details-marker{display:none}
 .history-body details .source-box{margin-top:7px}
+
+.circuit-app .case-row.case-session-current {
+  border-color: var(--green);
+  background: var(--green-bg);
+  box-shadow: inset 0 0 0 1px var(--green);
+}
+.circuit-app .case-session-current .time-pill {
+  background: var(--green);
+  color: #fff;
+}
+.current-session-label {
+  display: block;
+  margin-top: 5px;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.current-session-label[hidden] { display: none; }
