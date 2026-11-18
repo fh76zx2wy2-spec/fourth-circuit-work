@@ -988,7 +988,7 @@ async function saveBulkEntry(){
     const stamp=new Date().toISOString();
     state.cases.push(...payloads.filter(p=>!state.cases.some(c=>c.id===p.id)).map(p=>({...p,created_at:stamp,updated_at:stamp})));
     for(const row of chunk)row.saved=true;
-    demoEvent(`حُفظت ${chunk.length} قضايا تجريبية.`);
+    persistDemo();
    }else{
     const {error}=await state.client.from('cases').upsert(payloads,{onConflict:'id',ignoreDuplicates:true});
     if(error){
@@ -1006,7 +1006,7 @@ async function saveBulkEntry(){
   bulkEntry=null;
   state.historyDate=null;state.filterDate=entry.date;
   render();
-  notify(isSubmissionSender()?'حُفظت القضايا واعتمدت وأُرسل إشعار للقاضي.':'حُفظت جميع القضايا واعتمدت تلقائيًا.','success');
+  notify('حُفظت جميع القضايا واعتمدت تلقائيًا.','success');
   await loadAll();
  }catch(error){
   if(bulkEntry!==entry||actorId()!==author)return;
@@ -1581,7 +1581,7 @@ async function saveCase(status='approved'){
   // Legacy summaries and evidence must not refer to a discarded session.
   Object.assign(payload,{last_session_summary:'',adjournment_reason:'',reason_evidence_quote:'',next_action:'',summary_warning:''});
  }
- payload.status=isSubmissionSender()?'draft':'approved';payload.updated_by=actorId();if(editorId==='new')payload.created_by=author;caseSaving=true;editor.inert=true;state.loading=true;try{if(DEMO){let isNew=state.editorId==='new';const old=state.cases.find(c=>c.id===state.editorId);const doc={...old,...payload,id:isNew?uid():state.editorId,created_at:old?.created_at||new Date().toISOString(),updated_at:new Date().toISOString(),created_by:old?.created_by||actorId()};if(old?.status==='approved'&&JSON.stringify(payload)!==JSON.stringify(Object.fromEntries(Object.keys(payload).map(k=>[k,old[k]])))&&status!=='approved')doc.status='ready';if(status==='approved')doc.approved_by=actorId();state.cases=isNew?[...state.cases,doc]:state.cases.map(x=>x.id===doc.id?doc:x);state.reportApprovals=state.reportApprovals.filter(r=>![doc.session_date,old?.session_date].includes(r.session_date));demoEvent(`${state.profile.display_name} ${isNew?'أضاف':'عدّل'} القضية ${doc.case_number}`);state.filterDate=doc.session_date;notify('تم الحفظ محليًا في هذه المعاينة.','success');storeCaseDraft('single:'+editorId,null);resetCaseEntry();closeModal();return;}if(isSubmissionSender()){
+ payload.status=isSubmissionSender()?'draft':'approved';payload.updated_by=actorId();if(editorId==='new')payload.created_by=author;caseSaving=true;editor.inert=true;state.loading=true;try{if(DEMO){let isNew=state.editorId==='new';const old=state.cases.find(c=>c.id===state.editorId);const doc={...old,...payload,id:isNew?uid():state.editorId,created_at:old?.created_at||new Date().toISOString(),updated_at:new Date().toISOString(),created_by:old?.created_by||actorId()};if(old?.status==='approved'&&JSON.stringify(payload)!==JSON.stringify(Object.fromEntries(Object.keys(payload).map(k=>[k,old[k]])))&&status!=='approved')doc.status='ready';if(status==='approved')doc.approved_by=actorId();state.cases=isNew?[...state.cases,doc]:state.cases.map(x=>x.id===doc.id?doc:x);state.reportApprovals=state.reportApprovals.filter(r=>![doc.session_date,old?.session_date].includes(r.session_date));persistDemo();state.filterDate=doc.session_date;notify('تم الحفظ محليًا في هذه المعاينة.','success');storeCaseDraft('single:'+editorId,null);resetCaseEntry();closeModal();return;}if(isSubmissionSender()){
   f.submissionRequestId??=crypto.randomUUID();
   rememberCaseEntry();
   await saveAndSubmitCases(f.submissionRequestId,[{...payload,id:editorId==='new'?f.submissionRequestId:editorId,clear_previous:Object.hasOwn(payload,'last_session_summary')}],editorId!=='new');
@@ -1589,8 +1589,8 @@ async function saveCase(status='approved'){
   const query=state.client.from('cases');
   const result=editorId==='new'?await query.insert(payload).select('id').single():await query.update(payload).eq('id',editorId).select('id').single();
   if(result.error)throw result.error;
- }if(actorId()!==author||state.form!==f)return;state.historyDate=null;state.filterDate=payload.session_date;notify(isSubmissionSender()?'حُفظت القضية واعتمدت وأُرسل إشعار للقاضي.':'حُفظت القضية واعتمدت تلقائيًا.','success');storeCaseDraft('single:'+editorId,null);resetCaseEntry();closeModal();await loadAll();}catch(err){notify(err.message==='case_waiting_for_submission'?'القضية لم تُرسل للقاضي بعد.':'تعذّر الحفظ: '+err.message,'error');}finally{state.loading=false;caseSaving=false;if(editor.isConnected)editor.inert=false;}}
-async function softDeleteCase(){const id=state.editorId;if(id==='new')return;if(!window.confirm('هل تريد إزالة هذه القضية من الجدول؟ ستبقى نسخة في سجل المراجعات.'))return;if(DEMO){const c=state.cases.find(x=>x.id===id);state.cases=state.cases.filter(x=>x.id!==id);state.reportApprovals=state.reportApprovals.filter(r=>r.session_date!==c?.session_date);demoEvent(`${state.profile.display_name} أزال القضية ${c?.case_number||''}`);notify('أُزيلت القضية من المعاينة.','success');closeModal();return;}const {error}=await state.client.from('cases').update({deleted_at:new Date().toISOString(),updated_by:state.user.id}).eq('id',id);if(error)return notify(error.message,'error');notify('أُزيلت القضية من العرض.','success');closeModal();await loadAll();}
+ }if(actorId()!==author||state.form!==f)return;state.historyDate=null;state.filterDate=payload.session_date;notify('حُفظت القضية واعتمدت تلقائيًا.','success');storeCaseDraft('single:'+editorId,null);resetCaseEntry();closeModal();await loadAll();}catch(err){notify(err.message==='case_waiting_for_submission'?'القضية لم تُرسل للقاضي بعد.':'تعذّر الحفظ: '+err.message,'error');}finally{state.loading=false;caseSaving=false;if(editor.isConnected)editor.inert=false;}}
+async function softDeleteCase(){const id=state.editorId;if(id==='new')return;if(!window.confirm('هل تريد إزالة هذه القضية من الجدول؟ ستبقى نسخة في سجل المراجعات.'))return;if(DEMO){const c=state.cases.find(x=>x.id===id);state.cases=state.cases.filter(x=>x.id!==id);state.reportApprovals=state.reportApprovals.filter(r=>r.session_date!==c?.session_date);persistDemo();notify('أُزيلت القضية من المعاينة.','success');closeModal();return;}const {error}=await state.client.from('cases').update({deleted_at:new Date().toISOString(),updated_by:state.user.id}).eq('id',id);if(error)return notify(error.message,'error');notify('أُزيلت القضية من العرض.','success');closeModal();await loadAll();}
 async function loadProfile(){const {data,error}=await state.client.from('profiles').select('*').eq('id',state.user.id).maybeSingle();if(error)throw error;state.profile=data||null;void loadOrganizerPasskeyAccess();await loadDiwanAccess(state);}
 async function loadSharedCases(){
  const rows=[];
