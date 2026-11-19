@@ -127,3 +127,6 @@ end $function$;
 
 revoke all on function private.create_email_task(text,text,text,text,timestamptz,text,uuid[],text,text,date) from public, anon, authenticated;
 revoke all on function private.tag_task_from_email(uuid,text,text,timestamptz,text) from public, anon, authenticated;
+
+-- الإصدار المعتمد: المهمة توجه للقاضي، ويصل الموظفين إشعار بأنها وصلت للقاضي من البريد.
+-- (مطبّق على قاعدة البيانات باسم private.create_email_task_for_judge؛ راجع سجل الترحيلات في Supabase.)
