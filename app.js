@@ -1450,6 +1450,7 @@ window.taqadiBridge={
   const days=(data||[]).map(x=>typeof x==='string'?x:Object.values(x)[0]).sort();
   return {ready:true,name:state.profile.display_name,days:days.map(iso=>{const p=hijriParts(iso);return {iso,hijri:`${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}/${p.year}`};})};
  },
+ existing(iso){return state.cases.filter(c=>c.session_date===iso&&!c.deleted_at).map(c=>c.case_number);},
  async importDay(iso,items){
   if(!state.client||!state.user)return {error:'غير مسجل الدخول في المنظم'};
   const rows=(items||[]).map(it=>{
