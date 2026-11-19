@@ -1268,11 +1268,12 @@ function taskRow(t,expanded=false){
  const returned=assignments.some(a=>a.attempt>0&&!a.executed_at);
  const statusLabel=status==='pending'?'تم التنفيذ · بانتظار التأكيد':status==='open'&&returned?'أُعيدت للاستكمال':taskStates[status];
  return `<details class="task-compact" data-task-card="${esc(t.id)}" ${expanded||expandedTaskCards.has(t.id)?'open':''}>
- <summary><strong>${esc(t.title)}</strong><span class="task-card-assignees">${esc(assignments.map(a=>a.assignee_name).join('، ')||'لم يُحدد المكلف')}</span>
+ <summary><strong>${esc(t.title)}</strong>${t.source==='email'?`<span class="task-source-badge" title="وصلت من البريد">📧 من البريد</span>`:''}<span class="task-card-assignees">${esc(assignments.map(a=>a.assignee_name).join('، ')||'لم يُحدد المكلف')}</span>
  <span class="task-card-status" data-state="${status}">${statusLabel}</span></summary>
  <div class="task-card-body">
  ${t.details?`<div class="task-details">${esc(t.details)}</div>`:''}
  ${taskNeedsProposal(t)&&t.proposed_action?.trim()?`<div class="task-details"><strong>الإجراء المقترح:</strong> ${esc(t.proposed_action)}</div>`:''}
+ ${t.source==='email'?`<div class="task-source-note">📧 وصلت هذه المهمة من البريد${t.source_sender?` · المرسل: <strong>${esc(t.source_sender)}</strong>`:''}${t.source_subject?` · الموضوع: ${esc(t.source_subject)}`:''}${t.source_received_at?` · ${stamp(t.source_received_at)}`:''}</div>`:''}
  <div class="task-meta"><span>أرسلها: ${esc(profileName(t.created_by))}</span><span>${esc(taskCategories[t.category]||'أخرى')}</span>${t.case_number?`<span>رقم القضية: ${caseNumberButton(t.case_number)}</span>`:''}${t.due_date?`<span>الموعد: ${hijri(t.due_date)}</span>`:''}</div>
  ${assignments.map(a=>{
   const button=(action,label)=>`<button type="button" class="btn btn-small btn-soft" data-task-transition="${action}" data-task-id="${esc(t.id)}" data-assignee="${esc(a.assignee_id)}">${label}</button>`;

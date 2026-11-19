@@ -327,3 +327,5 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
   text-align: center;
 }
 .current-session-label[hidden] { display: none; }
+
+.task-source-badge{display:inline-block;margin-inline-start:8px;font-size:10px;font-weight:700;color:#1f5f9e;background:#e8f1fb;border:1px solid #c9ddf3;border-radius:20px;padding:2px 9px;vertical-align:middle}.task-source-note{margin-top:8px;font-size:12px;line-height:1.9;color:#1f5f9e;background:#f2f7fd;border-right:3px solid #6a9fd6;border-radius:6px;padding:8px 12px}
