@@ -65,7 +65,8 @@ const fiveWorkdays=()=>{const out=[];let day=todayRiyadh();while(out.length<5){d
 function displayWorkday(now=new Date()){
  // Saudi Arabia is UTC+3. Subtracting five local hours moves the civil boundary to 05:00.
  let day=new Date(now.getTime()-2*3600000).toISOString().slice(0,10);
- while([5,6].includes(new Date(day+'T12:00:00Z').getUTCDay()))day=addDays(day,-1);
+ // الجمعة والسبت: يبدأ عرض يوم الأحد، واليوم المنتهي ينتقل إلى «الجلسات السابقة».
+ while([5,6].includes(new Date(day+'T12:00:00Z').getUTCDay()))day=addDays(day,1);
  return day;
 }
 let displayedWorkday=displayWorkday();
