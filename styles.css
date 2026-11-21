@@ -337,14 +337,14 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 @keyframes enter-up{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
 @keyframes enter-fade{from{opacity:0}to{opacity:1}}
 @keyframes sk-shine{from{background-position:150% 0}to{background-position:-50% 0}}
-.app-enter .sidebar{animation:enter-side .55s cubic-bezier(.2,.8,.2,1) both}
-.app-enter .topbar{animation:enter-fade .5s .1s both}
-.app-enter .service-tile{animation:enter-up .5s cubic-bezier(.2,.8,.2,1) both}
-.app-enter .service-tile:nth-child(1){animation-delay:.12s}.app-enter .service-tile:nth-child(2){animation-delay:.18s}.app-enter .service-tile:nth-child(3){animation-delay:.24s}.app-enter .service-tile:nth-child(4){animation-delay:.3s}.app-enter .service-tile:nth-child(5){animation-delay:.36s}.app-enter .service-tile:nth-child(6){animation-delay:.42s}
-.data-reveal .content>:not(.service-tiles){animation:enter-up .45s cubic-bezier(.2,.8,.2,1) both}
+.app-enter .sidebar{animation:enter-side .8s cubic-bezier(.2,.8,.2,1) both}
+.app-enter .topbar{animation:enter-fade .8s .15s both}
+.app-enter .service-tile{animation:enter-up .7s cubic-bezier(.2,.8,.2,1) both}
+.app-enter .service-tile:nth-child(1){animation-delay:.2s}.app-enter .service-tile:nth-child(2){animation-delay:.3s}.app-enter .service-tile:nth-child(3){animation-delay:.4s}.app-enter .service-tile:nth-child(4){animation-delay:.5s}.app-enter .service-tile:nth-child(5){animation-delay:.6s}.app-enter .service-tile:nth-child(6){animation-delay:.7s}
+.data-reveal .content>:not(.service-tiles){animation:enter-up .7s cubic-bezier(.2,.8,.2,1) both}
 .boot-skeleton{display:grid;gap:12px;margin-top:22px}
 .sk-card{display:grid;gap:10px;padding:20px;border:1px solid var(--border);border-radius:14px;background:#fff}
 .sk-card span{height:12px;border-radius:6px;background:linear-gradient(90deg,#eef3f1 25%,#dfeae6 45%,#eef3f1 65%);background-size:300% 100%;animation:sk-shine 1.3s linear infinite}
 .sk-card span:nth-child(1){width:38%}.sk-card span:nth-child(2){width:82%}.sk-card span:nth-child(3){width:64%}
-.choose-screen .choose-card{animation:enter-up .6s cubic-bezier(.2,.8,.2,1) both}.choose-screen .choose-header{animation:enter-fade .6s both}
+.choose-screen .choose-card{animation:enter-up .8s .1s cubic-bezier(.2,.8,.2,1) both}.choose-screen .choose-header{animation:enter-fade .6s both}
 @media (prefers-reduced-motion:reduce){.app-enter *,.data-reveal *,.choose-screen *,.sk-card span{animation:none!important}}
