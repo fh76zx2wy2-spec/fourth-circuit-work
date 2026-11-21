@@ -21,3 +21,6 @@ create policy judge_case_preparation_access on public.judge_case_preparation
   for all to authenticated
   using ((select private.is_judge()))
   with check ((select private.is_judge()));
+
+-- رد الاستشارة: يلصقه القاضي بنفسه، ويخضع لسياسة judge_case_preparation_access (القاضي فقط).
+alter table public.judge_case_preparation add column if not exists consult_notes text;

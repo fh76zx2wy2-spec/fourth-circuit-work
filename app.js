@@ -1051,7 +1051,7 @@ function preparationPanel(){
  if(!preparation||preparation.caseId!==state.detailId||preparation.actor!==actorId())return '';
  if(preparation.loading)return '<div id="judge-preparation" class="detail-wide hint" role="status">جارٍ تحميل تحضير القاضي…</div>';
  if(preparation.loadFailed)return '<div id="judge-preparation" class="detail-wide"><p class="hint" role="alert">تعذّر تحميل تحضير القاضي.</p><button type="button" class="btn btn-soft" data-action="reload-preparation">إعادة المحاولة</button></div>';
- const {expected_outcome,custom_outcome,judge_notes}=preparation.fields;
+ const {expected_outcome,custom_outcome,judge_notes,consult_notes}=preparation.fields;
  return `<form id="judge-preparation" class="detail-wide soft-box">
   <fieldset ${preparation.saving?'disabled':''} style="border:0;padding:0;margin:0;min-width:0">
    <label class="form-label" for="expected-outcome">النتيجة المتوقعة للجلسة</label>
@@ -1065,6 +1065,8 @@ function preparationPanel(){
    </div>
    <label class="form-label" for="judge-notes">ملاحظات القاضي الخاصة</label>
    <textarea id="judge-notes" class="input" name="judge_notes" rows="4">${esc(judge_notes||'')}</textarea>
+   <label class="form-label" for="consult-notes">رد الاستشارة</label>
+   <textarea id="consult-notes" class="input" name="consult_notes" rows="6" placeholder="الصق هنا رد ChatGPT إن أردت حفظه. يظهر لك وحدك.">${esc(consult_notes||'')}</textarea>
    <div class="case-entry-actions" style="margin-top:10px">
     <button type="submit" class="btn btn-soft">حفظ تحضير الجلسة</button>
    </div>
@@ -1087,7 +1089,7 @@ async function openCaseDetail(caseId){
  render();
  try{
   const {data,error}=await state.client.from('judge_case_preparation')
-   .select('expected_outcome,custom_outcome,judge_notes').eq('case_id',caseId).maybeSingle();
+   .select('expected_outcome,custom_outcome,judge_notes,consult_notes').eq('case_id',caseId).maybeSingle();
   if(error)throw error;
   preparation.fields=data||{};
  }catch{
@@ -1111,8 +1113,9 @@ function updatePreparationField(input){
 async function saveCasePreparation(){
  const preparation=casePreparation;
  if(!isJudge()||!preparation||preparation.caseId!==state.detailId||preparation.actor!==actorId()||preparation.loading||preparation.loadFailed||preparation.saving)return;
- const {expected_outcome,custom_outcome,judge_notes}=preparation.fields;
+ const {expected_outcome,custom_outcome,judge_notes,consult_notes}=preparation.fields;
  const outcome=expected_outcome||null;
+ const consult=consult_notes?.trim()?consult_notes:null;
  const custom=outcome==='other'?custom_outcome?.trim()||null:null;
  const notes=judge_notes?.trim()?judge_notes:null;
  if(outcome==='other'&&!custom){
@@ -1126,11 +1129,11 @@ async function saveCasePreparation(){
  refreshPreparationPanel();
  try{
   const table=state.client.from('judge_case_preparation');
-  const {error}=outcome||notes
-   ?await table.upsert({case_id:preparation.caseId,expected_outcome:outcome,custom_outcome:custom,judge_notes:notes})
+  const {error}=outcome||notes||consult
+   ?await table.upsert({case_id:preparation.caseId,expected_outcome:outcome,custom_outcome:custom,judge_notes:notes,consult_notes:consult})
    :await table.delete().eq('case_id',preparation.caseId);
   if(error)throw error;
-  preparation.fields={expected_outcome:outcome,custom_outcome:custom,judge_notes:notes};
+  preparation.fields={expected_outcome:outcome,custom_outcome:custom,judge_notes:notes,consult_notes:consult};
   preparation.message='تم حفظ تحضير الجلسة.';
  }catch{
   preparation.message='تعذّر الحفظ. حاول مرة أخرى.';
