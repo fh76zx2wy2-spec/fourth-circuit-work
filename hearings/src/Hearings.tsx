@@ -9,7 +9,7 @@ import {
 } from "@/lib/schedule";
 import {
   type HistoryData, type DayRecord,
-  blankDay, normalizeDay, isDate, dayIsFinal,
+  blankDay, organizerDay, normalizeDay, isDate, dayIsFinal,
   distributeFairly, assignAdditionalFairly, hasAssignmentSpacingConflict,
 } from "@/lib/history";
 import { isSaudiWorkday } from "@/lib/domain";
@@ -18,7 +18,7 @@ import { apologyErrorMessage, deleteDay, exportDatabaseBackup, getProfile, loadE
 
 function initialState(): HistoryData {
   const today = todayRiyadh();
-  return { version: 2, selectedDate: today, days: { [today]: blankDay() } };
+  return { version: 2, selectedDate: today, days: { [today]: organizerDay(today) } };
 }
 
 export function Index() {
@@ -83,7 +83,7 @@ export function Index() {
     if (!isDate(nextDate)) return;
     setData(prev => ({
       ...prev, selectedDate: nextDate,
-      days: prev.days[nextDate] ? prev.days : { ...prev.days, [nextDate]: blankDay() },
+      days: prev.days[nextDate] ? prev.days : { ...prev.days, [nextDate]: organizerDay(nextDate) },
     }));
     setMsg(null); setHistoryMsg("");
   }
@@ -196,14 +196,14 @@ export function Index() {
   const resetAll = () => {
     const today = todayRiyadh();
     if (dayIsFinal(data.days[today] ?? blankDay()) && !window.confirm("يوجد توزيع محفوظ لهذا اليوم، هل تريد تهيئته من جديد؟ لن تُحذف سجلات الأيام الأخرى.")) return;
-    setData(prev => ({ ...prev, selectedDate: today, days: { ...prev.days, [today]: blankDay() } }));
+    setData(prev => ({ ...prev, selectedDate: today, days: { ...prev.days, [today]: organizerDay(today) } }));
     setHistorySearch(""); setMsg(null);
   };
   async function deleteRecord(target: string) {
     if (!window.confirm(`هل تريد حذف سجل يوم ${target} وإحصاءاته فقط؟ لن تتأثر بقية الأيام، ولا يمكن التراجع عن الحذف.`)) return;
     try {
       await deleteDay(target);
-      setData(prev => { const days = { ...prev.days }; delete days[target]; if (prev.selectedDate === target) days[target] = blankDay(); return { ...prev, days }; });
+      setData(prev => { const days = { ...prev.days }; delete days[target]; if (prev.selectedDate === target) days[target] = organizerDay(target); return { ...prev, days }; });
       setVersions(prev => { const next = { ...prev }; delete next[target]; return next; });
       setStatuses(prev => { const next = { ...prev }; delete next[target]; return next; });
       setCreators(prev => { const next = { ...prev }; delete next[target]; return next; });
@@ -503,7 +503,7 @@ export function Index() {
           <h2 className="text-sm font-semibold text-muted-foreground">معاينة الصورة المحفوظة</h2>
           {ready ? (
             <ScaledPreview>
-              <ExportCard ref={cardRef} hearings={sortChrono(hearings)} dates={dates} active={active} counts={counts} />
+              <ExportCard ref={cardRef} hearings={sortChrono(hearings)} dates={dates} active={active} counts={counts} creator={creators[date] ?? profile?.display_name} />
             </ScaledPreview>
           ) : (
             <div className="rounded-2xl border-2 border-dashed border-gold/60 bg-card p-10 text-center shadow-card">
@@ -633,8 +633,8 @@ function Arches({ className }: { className?: string }) {
   );
 }
 
-const ExportCard = forwardRef<HTMLDivElement, { hearings: Hearing[]; dates: { weekday: string; hijri: string; greg: string }; active: string[]; counts: Record<string, number> }>(
-  function ExportCard({ hearings, dates, active, counts }, ref) {
+const ExportCard = forwardRef<HTMLDivElement, { hearings: Hearing[]; dates: { weekday: string; hijri: string; greg: string }; active: string[]; counts: Record<string, number>; creator?: string }>(
+  function ExportCard({ hearings, dates, active, counts, creator }, ref) {
     return (
       <div ref={ref} id="export-card" dir="rtl" className="bg-parchment text-navy-deep font-sans" style={{ width: CARD_W }}>
         <div className="relative bg-gradient-navy text-primary-foreground px-12 pt-10 pb-8 text-center overflow-hidden">
@@ -686,7 +686,7 @@ const ExportCard = forwardRef<HTMLDivElement, { hearings: Hearing[]; dates: { we
           </div>
         </div>
         <div className="gold-rule" />
-        <div className="py-4 text-center text-base text-muted-foreground">الدائرة العامة الرابعة — المحكمة العامة بأبي عريش</div>
+        <div className="py-4 text-center text-base text-muted-foreground">الدائرة العامة الرابعة — المحكمة العامة بأبي عريش{creator && <div style={{ fontSize: "14px", marginTop: "6px", opacity: 0.85 }}>أُنشئ الجدول بواسطة/ {(globalThis as { __hearingsCreatorName?: (n: string) => string }).__hearingsCreatorName?.(creator) ?? creator}</div>}</div>
       </div>
     );
   },

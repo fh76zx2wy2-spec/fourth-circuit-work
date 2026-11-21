@@ -1,6 +1,6 @@
 import { requestHearings, signOutFromMain, supabase } from "./supabase";
 import type { HistoryData } from "./history";
-import { blankDay } from "./history";
+import { blankDay, organizerDay } from "./history";
 import { CLERKS, todayRiyadh } from "./schedule";
 
 export type Profile = {
@@ -143,7 +143,7 @@ export async function loadHistory(): Promise<{
     statuses[date] = raw.status;
     creators[date] = creatorNames.get(raw.created_by) ?? "مستخدم مصرح له";
   }
-  if (!days[today]) days[today] = blankDay();
+  if (!days[today]) days[today] = organizerDay(today);
   return { history: { version: 2, selectedDate: today, days }, versions, statuses, creators };
 }
 

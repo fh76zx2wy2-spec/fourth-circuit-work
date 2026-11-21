@@ -102,6 +102,17 @@ function arrangeHearings(quotas: Map<string, number>, rng: () => number): string
 }
 export const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(`${s}T12:00:00Z`)) && new Date(`${s}T12:00:00Z`).toISOString().startsWith(s);
 
+/** Unsaved day: start with the organizer's session times for that date (set by the host page). */
+export function organizerDay(date: string): DayRecord {
+  try {
+    const slots = (globalThis as { __organizerHearings?: (d: string) => Array<{ h: number; m: number }> }).__organizerHearings?.(date) ?? [];
+    if (!slots.length) return blankDay();
+    return { hearings: slots.slice(0, 60).map((x) => ({ id: newId(), h: x.h, m: x.m, clerk: null })), active: [...CLERKS], distributed: false };
+  } catch {
+    return blankDay();
+  }
+}
+
 export function blankDay(n = 0): DayRecord {
   return {
     hearings: Array.from({ length: n }, (_, i) => ({ id: newId(), ...defaultTime(i), clerk: null })),
