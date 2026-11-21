@@ -1270,7 +1270,7 @@ function detailModal(){
  const m=minutesExtract(c),judge=isJudge();
  return `<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>القضية رقم ${caseNumberButton(c.case_number)}</h2><small>${esc(c.case_type)} • ${hijriLong(c.session_date)} • ${tm(c.session_time)}</small></div><div class="toolbar">${judge?'<button type="button" class="btn btn-small btn-soft" data-action="copy-consult" title="ينسخ ملف القضية كاملًا لتلصقه في ChatGPT بنفسك">نسخ للاستشارة</button>':''}<button class="icon-button" data-action="close-detail">✕</button></div></div><div class="modal-body"><div class="status-line"><span class="badge ${esc(c.status)}">${statusTitle(c.status)}</span><span class="pill">${sessionNumberBadge(c)}</span></div><div class="detail-grid" style="margin-top:24px">${info('المدعي',c.plaintiffs)}${info('المدعى عليه',c.defendants)}${info('موضوع الدعوى',c.claim_summary,true)}${info('مُدخل القضية',profileName(c.created_by))}${c.previous_date?info('تاريخ الجلسة الأخيرة',hijriLong(c.previous_date),true):''}${caseHistoryPanel(c)}${judge?`<div class="detail-field detail-wide summary-card"><small>معاينة مختصرة آلية من الضبط الأصلي</small><p>${esc(m.overview)}</p>${m.evidence?`<small class="summary-label">عبارة ورود رفع الجلسة في المحضر</small><p class="quote-text">${esc(m.evidence)}</p>`:''}<small class="summary-note">هذا استخراج نصي أولي غير معتمد، وقد لا يوضح سبب الرفع بدقة. راجع الأصل دائمًا.</small></div><div class="detail-field detail-wide"><button class="btn btn-soft" data-action="toggle-source">${state.showSource?'إخفاء':'عرض'} ضبط الجلسة السابقة كاملًا</button>${state.showSource?`<div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div>`:''}</div>`:`<div class="detail-field detail-wide"><small>الضبط الأصلي كاملًا</small><div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div></div>`}${outcomeEditor(c)}${followupPanel(c)}${judge?preparationPanel():''}<div class="detail-field detail-wide"><small>آخر تحديث</small><p>${stamp(c.updated_at)} • ${esc(profileName(c.updated_by||c.created_by))}</p></div></div></div><div class="modal-foot"><button class="btn" data-action="close-detail">إغلاق</button><button class="btn btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></div></div>`;
 }
-function initialTask(){return {title:'',category:'case',case_number:'',details:'',proposed_action:'',due_date:'',priority:'normal',assigned_to:[]};}
+function initialTask(){return {title:'',category:'case',case_number:'',details:'',proposed_action:'',due_date:'',priority:'normal',assigned_to:[],completion_mode:'any'};}
 const myAssignment=task=>task.task_assignments?.find(item=>item.assignee_id===actorId());
 const taskComplete=task=>Boolean(task.task_assignments?.length&&task.task_assignments.every(item=>item.confirmed_at));
 function taskCardMini(t){
@@ -1352,23 +1352,44 @@ function taskRow(t,expanded=false){
  ${t.details?`<div class="task-details">${esc(t.details)}</div>`:''}
  ${taskNeedsProposal(t)&&t.proposed_action?.trim()?`<div class="task-details"><strong>الإجراء المقترح:</strong> ${esc(t.proposed_action)}</div>`:''}
  ${t.source==='email'?`<div class="task-source-note">📧 وصلت هذه المهمة من البريد${t.source_sender?` · المرسل: <strong>${esc(t.source_sender)}</strong>`:''}${t.source_subject?` · الموضوع: ${esc(t.source_subject)}`:''}${t.source_received_at?` · ${stamp(t.source_received_at)}`:''}</div>`:''}
- <div class="task-meta"><span>أرسلها: ${esc(profileName(t.created_by))}</span><span>${esc(taskCategories[t.category]||'أخرى')}</span>${t.case_number?`<span>رقم القضية: ${caseNumberButton(t.case_number)}</span>`:''}${t.due_date?`<span>الموعد: ${hijri(t.due_date)}</span>`:''}</div>
+ <div class="task-meta"><span>أرسلها: ${esc(profileName(t.created_by))}</span>${t.completion_mode==='any'?'<span>يكفي تنفيذ أحدهم</span>':''}<span>${esc(taskCategories[t.category]||'أخرى')}</span>${t.case_number?`<span>رقم القضية: ${caseNumberButton(t.case_number)}</span>`:''}${t.due_date?`<span>الموعد: ${hijri(t.due_date)}</span>`:''}</div>
  ${assignments.map(a=>{
   const button=(action,label)=>`<button type="button" class="btn btn-small btn-soft" data-task-transition="${action}" data-task-id="${esc(t.id)}" data-assignee="${esc(a.assignee_id)}">${label}</button>`;
   return `<div class="task-card-assignment"><strong>${esc(a.assignee_name)} · ${a.executed_at&&!a.confirmed_at?'تم التنفيذ · بانتظار التأكيد':a.attempt>0&&!a.executed_at?'أُعيدت للاستكمال':taskStates[assignmentState(a)]}</strong>
   <div class="task-meta"><span>الإسناد: ${stamp(a.assigned_at)}</span>${a.executed_at?`<span>التنفيذ: ${stamp(a.executed_at)}</span>`:''}${a.confirmed_at?`<span>التأكيد: ${stamp(a.confirmed_at)}</span>`:''}</div>
-  ${!a.executed_at&&a.assignee_id===actorId()?button('execute',isJudge()?'إنهاء وأرشفة':'تم التنفيذ'):''}
-  ${isJudge()&&a.executed_at&&!a.confirmed_at?button('confirm','تأكيد الإنجاز')+button('return','إعادة للاستكمال'):''}</div>`;
+  ${a.return_reason&&!a.executed_at?`<div class="task-note returned"><strong>سبب الإعادة:</strong> ${esc(a.return_reason)}</div>`:''}
+  ${a.execution_note&&a.executed_at?`<div class="task-note"><strong>رسالة التنفيذ:</strong> ${esc(a.execution_note)}</div>`:''}
+  ${!a.executed_at&&a.assignee_id===actorId()?(isJudge()?button('execute','إنهاء وأرشفة'):taskNoteForm(t,a,'execute','رسالة التنفيذ (إلزامية)','مثال: تم تنفيذ المهمة وإرسال الخطاب للرئيس لاعتماده','تم التنفيذ')):''}
+  ${isJudge()&&a.executed_at&&!a.confirmed_at?button('confirm','تأكيد الإنجاز')+taskNoteForm(t,a,'return','سبب الإعادة (يصل للموظف)','مثال: الخطاب ناقص رقم القضية','إعادة للاستكمال'):''}</div>`;
  }).join('')}
  ${isJudge()||t.created_by===actorId()?`<button class="btn btn-small btn-soft" data-task-edit="${esc(t.id)}">تعديل</button>`:''}
  ${isSubmissionRecipient()?`<button type="button" class="btn btn-small btn-danger" data-task-delete="${esc(t.id)}">حذف نهائي</button>`:''}
  </div></details>`;
 }
+function taskNoteForm(t,a,action,label,placeholder,submit){
+ return `<form class="task-note-form" data-task-note-form data-task-id="${esc(t.id)}" data-assignee="${esc(a.assignee_id)}" data-action-name="${action}">
+  <label>${label}<textarea class="input" name="note" rows="2" minlength="3" maxlength="1000" required placeholder="${esc(placeholder)}"></textarea></label>
+  <button type="submit" class="btn btn-small ${action==='execute'?'btn-primary':'btn-soft'}">${submit}</button></form>`;
+}
+async function submitTaskNote(form){
+ if(DEMO)return;
+ const note=latinDigits(form.elements.note.value).trim();
+ if(note.length<3){form.elements.note.focus();return notify(form.dataset.actionName==='execute'?'اكتب رسالة التنفيذ قبل الإرسال.':'اكتب سبب الإعادة.','error');}
+ const btn=form.querySelector('button');btn.disabled=true;
+ try{
+  const {error}=await state.client.rpc('change_task_assignment',{p_task:form.dataset.taskId,p_assignee:form.dataset.assignee,p_action:form.dataset.actionName,p_note:note});
+  if(error)throw error;
+  await loadAll();
+  notify(form.dataset.actionName==='execute'?'سُجّل التنفيذ ووصلت رسالتك للقاضي.':'أُعيدت المهمة للموظف مع السبب.','success');
+ }catch(e){notify('تعذّر الحفظ: '+(e.message||''),'error');}
+ finally{btn.disabled=false;}
+}
 function taskRecipients(f){
  const profiles=state.profiles.filter(p=>DEMO||p.is_active&&['judge','secretary'].includes(p.role));
  return `<fieldset class="form-group wide"><legend class="form-label">توجيه المهمة إلى <span class="case-required" aria-hidden="true">*</span></legend>
  <div class="task-meta"><label><input type="checkbox" data-task-all ${profiles.length&&f.assigned_to.length===profiles.length?'checked':''}> الجميع</label>
- ${profiles.map(p=>`<label><input type="checkbox" data-task-recipient="${esc(p.id)}" ${f.assigned_to.includes(p.id)?'checked':''}> ${esc(p.display_name)}</label>`).join('')}</div></fieldset>`;
+ ${profiles.map(p=>`<label><input type="checkbox" data-task-recipient="${esc(p.id)}" ${f.assigned_to.includes(p.id)?'checked':''}> ${esc(p.display_name)}</label>`).join('')}</div>
+ ${state.taskEditorId==='new'?`<div class="task-meta" data-task-mode ${f.assigned_to.length>1?'':'hidden'}><label><input type="radio" name="task-mode" value="any" data-task-mode-input ${(f.completion_mode||'any')==='any'?'checked':''}> يكفي تنفيذ أحدهم، وتُغلق عند الباقين</label><label><input type="radio" name="task-mode" value="all" data-task-mode-input ${f.completion_mode==='all'?'checked':''}> يجب أن ينفذها كل واحد</label></div>`:''}</fieldset>`;
 }
 function taskEditor(){const f=state.taskForm,id=state.taskEditorId,needsProposal=taskNeedsProposal(f,id==='new');const fld=(name,label,type='text')=>`<div class="form-group"><label class="form-label">${label}</label><input class="input" type="${type}" data-task-field="${name}" value="${esc(f[name]||'')}" />${name==='case_number'?copyCaseFieldButton:''}</div>`;
  return `<div class="modal-backdrop"><div class="modal task-modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>${id==='new'?'إضافة مهمة أو تذكير':'تعديل المهمة'}</h2><small>يُحفظ اسم من أضاف المهمة ومن أنجزها.</small></div><button class="icon-button" data-action="close-task-editor">✕</button></div><form id="task-form"><div class="modal-body"><div class="form-grid two"><div class="form-group wide"><label class="form-label">عنوان المهمة *</label><input class="input" data-task-field="title" maxlength="220" required placeholder="مثل: الرد على البريد بخصوص القضية ..." value="${esc(f.title||'')}" /></div><div class="form-group"><label class="form-label">نوع المهمة</label><select class="input" data-task-field="category">${Object.entries(taskCategories).map(([k,v])=>`<option value="${k}" ${f.category===k?'selected':''}>${v}</option>`).join('')}</select></div>${fld('case_number','رقم القضية أو التذكرة (اختياري)')}<div class="form-group"><label class="form-label">الأولوية</label><select class="input" data-task-field="priority">${Object.entries(priorityNames).map(([k,v])=>`<option value="${k}" ${f.priority===k?'selected':''}>${v}</option>`).join('')}</select></div>${hijriPicker('due_date',f.due_date,'التاريخ المطلوب (هجري)',{past:5,future:10})}${id==='new'?taskRecipients(f):''}<div class="form-group wide"><label class="form-label">تفاصيل المطلوب</label><textarea class="input" rows="4" data-task-field="details" placeholder="اذكر مضمون الطلب أو الرسالة والمستند الذي يُرجع إليه.">${esc(f.details||'')}</textarea></div><div class="form-group wide" data-task-proposal ${needsProposal?'':'style="display:none"'}><label class="form-label" for="task-proposed-action">الإجراء المقترح <span class="case-required" aria-hidden="true">*</span></label><textarea id="task-proposed-action" class="input" rows="2" data-task-field="proposed_action" aria-describedby="task-proposal-hint" ${needsProposal?'required':'disabled'} placeholder="مثل: إعداد الإفادة المطلوبة والرفع بها للمحكمة">${esc(f.proposed_action||'')}</textarea><small id="task-proposal-hint" class="hint">توصية للعرض على القاضي.</small></div></div></div><div class="modal-foot"><button type="button" class="btn" data-action="close-task-editor">إلغاء</button><button type="submit" class="btn btn-primary">✓ حفظ المهمة</button></div></form></div></div>`;}
@@ -1377,7 +1398,7 @@ function closeTaskEditor(){state.taskEditorId=null;state.taskForm=null;render();
 const savingTaskForms=new WeakSet();
 async function saveTask(){const f=state.taskForm;if(f&&savingTaskForms.has(f))return;if(!f||!f.title?.trim()||f.title.trim().length<3)return notify('اكتب عنوان المهمة على الأقل.','error');const needsProposal=taskNeedsProposal(f,state.taskEditorId==='new');if(needsProposal&&!f.proposed_action?.trim()){ $('#task-proposed-action')?.focus();return notify('أدخل الإجراء المقترح للمهمة.','error');}const due=readHijriPicker('due_date');if(!due.ok)return notify(due.message,'error');f.due_date=due.value;const fields=['title','category','case_number','details','due_date','priority'];if(needsProposal)fields.push('proposed_action');const original=state.tasks.find(task=>task.id===state.taskEditorId);const payload=Object.fromEntries(fields.map(k=>[k,savedText(f[k],original?.[k])]));payload.due_date=payload.due_date||null;const editorId=state.taskEditorId,author=actorId(),isNew=editorId==='new';
  if(isNew&&!f.assigned_to.length){document.querySelector('[data-task-recipient]')?.focus();return notify('اختر من توجه إليه المهمة.','error');}
- if(isNew)payload.assigned_to=f.assigned_to;
+ if(isNew){payload.assigned_to=f.assigned_to;payload.completion_mode=f.assigned_to.length>1?(f.completion_mode||'any'):'all';}
  savingTaskForms.add(f);
  try{if(DEMO){const old=state.tasks.find(x=>x.id===state.taskEditorId),v={...old,...payload,id:isNew?uid():old.id,status:old?.status||'open',created_by:old?.created_by||actorId(),updated_by:actorId(),created_at:old?.created_at||new Date().toISOString(),updated_at:new Date().toISOString()};if(isNew)v.task_assignments=f.assigned_to.map(id=>({task_id:v.id,assignee_id:id,assignee_name:profileName(id),assigned_at:v.created_at}));state.tasks=isNew?[v,...state.tasks]:state.tasks.map(x=>x.id===v.id?v:x);demoEvent(`${state.profile.display_name} ${isNew?'أضاف':'عدّل'} مهمة: ${v.title}`);closeTaskEditor();notify('تم حفظ المهمة في المعاينة.','success');return;}
   if(isNew)f.id??=crypto.randomUUID();
@@ -1904,8 +1925,10 @@ document.addEventListener('change',e=>{
   state.taskForm.assigned_to=inputs.filter(input=>input.checked).map(input=>input.dataset.taskRecipient);
   syncTaskProposalField();
   $('[data-task-all]').checked=inputs.length>0&&state.taskForm.assigned_to.length===inputs.length;
+  const mode=$('[data-task-mode]');if(mode)mode.hidden=state.taskForm.assigned_to.length<2;
   return;
  }
+ if(state.taskForm&&e.target.matches('[data-task-mode-input]')){state.taskForm.completion_mode=e.target.value;return;}
 
  if(e.target.matches('[data-case-time-part]')){updateCaseTime(e.target);return;}
  if(e.target.matches('[data-form-field="stage"]')&&(state.form||bulkEntry)){changeCaseStage(e.target);return;}
@@ -1929,7 +1952,7 @@ document.addEventListener('focusout',e=>{
   if(group.isConnected&&!group.contains(document.activeElement))reorderBulkRows();
  },0);
 });
-document.addEventListener('submit',e=>{if(e.target.id==='account-login-form'){e.preventDefault();void loginAccount(e.target);return;}if(e.target.id==='session-outcome-form'){e.preventDefault();void saveSessionOutcome(e.target);return;}if(e.target.id==='judge-preparation'){e.preventDefault();void saveCasePreparation();return;}if(e.target.id==='followup-form'){e.preventDefault();void saveFollowup(e.target,e.submitter);return;}if(e.target.id==='bulk-case-form'){e.preventDefault();void saveBulkEntry();}if(e.target.id==='case-form'){e.preventDefault();saveCase('ready');}if(e.target.id==='task-form'){e.preventDefault();saveTask();}});
+document.addEventListener('submit',e=>{if(e.target.id==='account-login-form'){e.preventDefault();void loginAccount(e.target);return;}if(e.target.id==='session-outcome-form'){e.preventDefault();void saveSessionOutcome(e.target);return;}if(e.target.id==='judge-preparation'){e.preventDefault();void saveCasePreparation();return;}if(e.target.id==='followup-form'){e.preventDefault();void saveFollowup(e.target,e.submitter);return;}if(e.target.matches('[data-task-note-form]')){e.preventDefault();void submitTaskNote(e.target);return;}if(e.target.id==='bulk-case-form'){e.preventDefault();void saveBulkEntry();}if(e.target.id==='case-form'){e.preventDefault();saveCase('ready');}if(e.target.id==='task-form'){e.preventDefault();saveTask();}});
 let hearingsContainer;
 let hearingsMount;
 function showHearings(){
