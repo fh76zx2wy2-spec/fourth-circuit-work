@@ -336,6 +336,17 @@ async function enableCasePush(renew=false){
   notify('تعذّر تفعيل الإشعارات على هذا الجهاز.','error');
  }
 }
+// خروج تلقائي بعد 30 دقيقة دون استخدام (مشترك بين تبويبات الجهاز نفسه). تشغيل إضافة تقاضي يُعد استخدامًا.
+const IDLE_MS=30*60*1000,IDLE_KEY='fourth-circuit-last-activity';
+let idleNotice=false,lastTouch=0;
+function touchActivity(){lastTouch=Date.now();try{localStorage.setItem(IDLE_KEY,String(lastTouch));}catch{}}
+function idleExpired(){try{const t=Number(localStorage.getItem(IDLE_KEY));return t>0&&Date.now()-t>IDLE_MS;}catch{return false;}}
+for(const ev of ['pointerdown','keydown','touchstart','wheel','input'])addEventListener(ev,()=>{if(Date.now()-lastTouch>15000)touchActivity();},{passive:true,capture:true});
+setInterval(async()=>{
+ if(DEMO||!state.client||!state.user||!idleExpired())return;
+ try{await state.client.auth.signOut({scope:'local'});}catch{}
+ notify('تم تسجيل الخروج تلقائيًا بعد 30 دقيقة دون استخدام.');
+},60000);
 async function signOutAccount(){
  await queuePushOperation(async()=>{
   if(state.profile?.is_active&&supportsPush()){
@@ -1468,6 +1479,7 @@ window.taqadiBridge={
  version:1,
  async status(){
   if(DEMO||!state.client||!state.user||!state.profile?.is_active)return {ready:false};
+  touchActivity();
   const {data,error}=await state.client.rpc('taqadi_entry_window');
   if(error)return {ready:false,error:error.message};
   const days=(data||[]).map(x=>typeof x==='string'?x:Object.values(x)[0]).sort();
@@ -1476,6 +1488,7 @@ window.taqadiBridge={
  existing(iso){return state.cases.filter(c=>c.session_date===iso&&!c.deleted_at).map(c=>c.case_number);},
  // قضايا اليوم في المنظم مع حالة ملفها الزمني: هل جلستها السابقة محفوظة في الملف؟
  async existingDetail(iso){
+  touchActivity();
   const list=state.cases.filter(c=>c.session_date===iso&&!c.deleted_at);
   const nums=list.map(c=>c.case_number);
   const have=new Set();
@@ -1489,11 +1502,13 @@ window.taqadiBridge={
  },
  async importHistory(items){
   if(!state.client||!state.user)return {error:'غير مسجل الدخول في المنظم'};
+  touchActivity();
   const {data,error}=await state.client.rpc('import_case_history',{p_items:items||[]});
   return error?{error:error.message}:data;
  },
  async importDay(iso,items){
   if(!state.client||!state.user)return {error:'غير مسجل الدخول في المنظم'};
+  touchActivity();
   const rows=(items||[]).map(it=>{
    let previous_date='';
    const m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(it.previous_hijri||'');
@@ -1776,7 +1791,7 @@ async function init(){if(DEMO){
   if(d){state.cases=d.cases||[];state.tasks=d.tasks||[];state.notifications=d.notifications||[];state.reportApprovals=d.reportApprovals||[];}else persistDemo();
   const chosen=localStorage.getItem('fourth-circuit-demo-profile');
   state.profile=STAFF.find(p=>p.id===chosen)||null;render();return;}
-try{const mod=await import('https://esm.sh/@supabase/supabase-js@2.119.0?bundle');state.client=mod.createClient(CONFIG.supabaseUrl,CONFIG.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true}});const {data:{session},error}=await state.client.auth.getSession();if(error)throw error;if(session?.user.is_anonymous)await state.client.auth.signOut({scope:'local'});state.user=session?.user.is_anonymous?null:session?.user||null;if(state.user){await loadProfile();if(state.profile?.is_active){await loadAll();subscribeChanges();registerPushWorker();openNotificationLink();}}state.client.auth.onAuthStateChange((_ev,session)=>{const old=state.user?.id;state.user=session?.user.is_anonymous?null:session?.user||null;if(state.user?.id!==old){assignmentDays.clear();assignmentActor=null;resetCaseEntry();state.detailId=null;casePreparation=null;state.submission=null;state.focusedTaskId=null;if(state.sub){state.client.removeChannel(state.sub);state.sub=null;}state.profile=null;state.diwanOwnerUid=null;state.notifications=[];state.unreadCount=0;state.showReadNotices=false;state.noticeHistoryLimit=30;state.hasMoreNoticeHistory=false;state.taskFilter='mine';state.taskStatusFilter='';state.taskPersonFilter='';expandedTaskCards.clear();state.taskSearch='';state.historyDate=null;state.filterDate=displayedWorkday;lastDataSnapshot='';state.initialNotifLoad=true;render();if(state.user){setTimeout(async()=>{await refreshProfile();if(state.profile?.is_active)subscribeChanges();},10);}}});render();}catch(e){app.innerHTML=`<div class="empty" style="min-height:90vh"><b>تعذّر تشغيل الموقع</b><p>${esc(e.message)}. تحقق من بيانات الاتصال بالقاعدة والاتصال بالإنترنت.</p></div>`;}}
+try{const mod=window.supabase;if(!mod?.createClient)throw new Error('تعذّر تحميل مكتبة الاتصال بأمان');state.client=mod.createClient(CONFIG.supabaseUrl,CONFIG.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true}});let {data:{session},error}=await state.client.auth.getSession();if(error)throw error;if(session&&!session.user.is_anonymous&&idleExpired()){await state.client.auth.signOut({scope:'local'});session=null;idleNotice=true;}if(session)touchActivity();if(session?.user.is_anonymous)await state.client.auth.signOut({scope:'local'});state.user=session?.user.is_anonymous?null:session?.user||null;if(state.user){await loadProfile();if(state.profile?.is_active){await loadAll();subscribeChanges();registerPushWorker();openNotificationLink();}}state.client.auth.onAuthStateChange((_ev,session)=>{if(_ev==='SIGNED_IN')touchActivity();const old=state.user?.id;state.user=session?.user.is_anonymous?null:session?.user||null;if(state.user?.id!==old){assignmentDays.clear();assignmentActor=null;resetCaseEntry();state.detailId=null;casePreparation=null;state.submission=null;state.focusedTaskId=null;if(state.sub){state.client.removeChannel(state.sub);state.sub=null;}state.profile=null;state.diwanOwnerUid=null;state.notifications=[];state.unreadCount=0;state.showReadNotices=false;state.noticeHistoryLimit=30;state.hasMoreNoticeHistory=false;state.taskFilter='mine';state.taskStatusFilter='';state.taskPersonFilter='';expandedTaskCards.clear();state.taskSearch='';state.historyDate=null;state.filterDate=displayedWorkday;lastDataSnapshot='';state.initialNotifLoad=true;render();if(state.user){setTimeout(async()=>{await refreshProfile();if(state.profile?.is_active)subscribeChanges();},10);}}});render();if(idleNotice)notify('تم تسجيل الخروج تلقائيًا بعد 30 دقيقة دون استخدام. سجّل الدخول من جديد.');}catch(e){app.innerHTML=`<div class="empty" style="min-height:90vh"><b>تعذّر تشغيل الموقع</b><p>${esc(e.message)}. تحقق من بيانات الاتصال بالقاعدة والاتصال بالإنترنت.</p></div>`;}}
 let backgroundRefreshRunning=false;
 async function refreshInBackground(){
  if(backgroundRefreshRunning||!state.profile?.is_active)return;
