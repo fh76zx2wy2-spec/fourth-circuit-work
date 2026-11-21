@@ -84,7 +84,7 @@ end $function$;
 
 -- إدخال يوم واحد. كل عنصر: case_number,time(HH:MM),plaintiffs,defendants,case_type,claim_summary,
 -- stage(first|followup),session_number,previous_date(YYYY-MM-DD),previous_minutes.
--- القضية الموجودة في نفس التاريخ لا تُكرر ولا تُمس بياناتها؛ يُحدّث وقتها فقط إذا تغير في تقاضي.
+-- القضية الموجودة في نفس التاريخ لا تُكرر ولا تُمس بياناتها، ولا وقتها؛ اختلاف الوقت يُسجّل للمراجعة فقط.
 -- العنصر الناقص لا يُدخل، ويظهر في المراجعة.
 create or replace function public.import_taqadi_day(p_date date, p_items jsonb)
 returns jsonb language plpgsql security definer set search_path to ''
@@ -114,11 +114,9 @@ begin
     else
       select * into existing from public.cases where case_number=cn and session_date=p_date and deleted_at is null limit 1;
       if found then
+        -- لا يُغيّر وقت قضية موجودة آليًا: يُسجّل الاختلاف ويظهر في «مراجعة جلسات اليوم» ليقرره المراجع.
         if t is not null and existing.session_time is distinct from t then
-          begin
-            update public.cases set session_time=t, updated_by=me where id=existing.id;
-            status:='time_updated'; updated:=updated+1;
-          exception when others then status:='failed'; missing:=array[sqlerrm]; failed:=failed+1; end;
+          status:='time_differs'; missing:=array['الوقت مختلف عن تقاضي']; updated:=updated+1;
         else status:='unchanged'; same:=same+1; end if;
       else
         if t is null then missing:=array_append(missing,'الوقت'); end if;
@@ -163,12 +161,12 @@ begin
 
   if added+updated+review+failed>0 then
     insert into public.notifications(recipient_id,actor_id,kind,message)
-    select id,me,'updated',left(format('أُدخلت جلسات %s آليًا من تقاضي (%s جديدة، %s تحديث وقت%s). راجعها وأكد المطابقة.',
+    select id,me,'updated',left(format('أُدخلت جلسات %s آليًا من تقاضي (%s جديدة، %s وقت مختلف%s). راجعها وأكد المطابقة.',
       to_char(p_date,'YYYY-MM-DD'),added,updated,case when review+failed>0 then format('، %s تحتاج مراجعة',review+failed) else '' end),450)
     from public.profiles where is_active and role in ('judge','secretary') and id<>me;
   end if;
 
-  return jsonb_build_object('date',p_date,'added',added,'time_updated',updated,'unchanged',same,
+  return jsonb_build_object('date',p_date,'added',added,'time_updated',0,'time_differs',updated,'unchanged',same,
     'needs_review',review,'failed',failed,'items',out_items);
 end $function$;
 revoke all on function public.import_taqadi_day(date,jsonb) from public, anon;

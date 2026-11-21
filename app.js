@@ -1452,6 +1452,24 @@ window.taqadiBridge={
   return {ready:true,name:state.profile.display_name,days:days.map(iso=>{const p=hijriParts(iso);return {iso,hijri:`${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}/${p.year}`};})};
  },
  existing(iso){return state.cases.filter(c=>c.session_date===iso&&!c.deleted_at).map(c=>c.case_number);},
+ // قضايا اليوم في المنظم مع حالة ملفها الزمني: هل جلستها السابقة محفوظة في الملف؟
+ async existingDetail(iso){
+  const list=state.cases.filter(c=>c.session_date===iso&&!c.deleted_at);
+  const nums=list.map(c=>c.case_number);
+  const have=new Set();
+  if(nums.length&&state.client){
+   const {data,error}=await state.client.from('case_session_history').select('case_number,session_hijri').in('case_number',nums);
+   if(error)return {error:error.message};
+   for(const r of data||[])have.add(r.case_number+'|'+r.session_hijri);
+  }
+  const hj=d=>{const p=hijriParts(d);return p?`${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}/${p.year}`:'';};
+  return list.map(c=>{const prev=c.previous_date?hj(c.previous_date):'';return {case_number:c.case_number,stage:c.stage,previous_hijri:prev,history_ready:!!prev&&have.has(c.case_number+'|'+prev)};});
+ },
+ async importHistory(items){
+  if(!state.client||!state.user)return {error:'غير مسجل الدخول في المنظم'};
+  const {data,error}=await state.client.rpc('import_case_history',{p_items:items||[]});
+  return error?{error:error.message}:data;
+ },
  async importDay(iso,items){
   if(!state.client||!state.user)return {error:'غير مسجل الدخول في المنظم'};
   const rows=(items||[]).map(it=>{
