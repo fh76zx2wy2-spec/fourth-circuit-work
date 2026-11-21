@@ -348,3 +348,6 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .sk-card span:nth-child(1){width:38%}.sk-card span:nth-child(2){width:82%}.sk-card span:nth-child(3){width:64%}
 .choose-screen .choose-card{animation:enter-up .8s .1s cubic-bezier(.2,.8,.2,1) both}.choose-screen .choose-header{animation:enter-fade .6s both}
 @media (prefers-reduced-motion:reduce){.app-enter *,.data-reveal *,.choose-screen *,.sk-card span{animation:none!important}}
+.badge.followup-ready{color:#98731f;background:#fff5df}.badge.followup-approved{color:#087b62;background:#e6f6ed}.badge.followup-danger{color:#a33a32;background:#fdecea}.badge.followup-draft{color:#6a7d76;background:#edf1ef}
+.followup-card label{display:block;font-size:12px;color:var(--muted);margin-top:8px}.followup-card .input{margin-top:5px}
+.followup-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media (max-width:600px){.followup-grid{grid-template-columns:1fr}}

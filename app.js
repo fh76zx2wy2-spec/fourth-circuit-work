@@ -147,7 +147,7 @@ const DEMO_TASKS = [];
 const DEMO_CASES = [];
 const DEMO_STORE = 'fourth-circuit-demo-v3-clean';
 const app = $('#app');
-const state = {client:null,user:null,profile:null,cases:DEMO?[...DEMO_CASES]:[],tasks:DEMO?[...DEMO_TASKS]:[],reportApprovals:[],notifications:[],profiles:DEMO?STAFF:[],taskEditorId:null,taskForm:null,taskFilter:'mine',taskSearch:'',selectedPerson:null,loginSent:false,authEmail:'',screen:'dashboard',filterDate:displayedWorkday,historyDate:null,search:'',stageFilter:'all',detailId:null,editorId:null,form:null,showSource:false,showNotifs:false,authMode:'login',authBusy:false,loading:false,posterApprovedOnly:false,exporting:false,sub:null,initialNotifLoad:true};
+const state = {client:null,user:null,profile:null,cases:DEMO?[...DEMO_CASES]:[],tasks:DEMO?[...DEMO_TASKS]:[],reportApprovals:[],notifications:[],profiles:DEMO?STAFF:[],taskEditorId:null,taskForm:null,taskFilter:'mine',taskSearch:'',selectedPerson:null,loginSent:false,authEmail:'',screen:'dashboard',filterDate:displayedWorkday,historyDate:null,search:'',stageFilter:'all',detailId:null,editorId:null,form:null,showSource:false,showNotifs:false,authMode:'login',authBusy:false,loading:false,posterApprovedOnly:false,exporting:false,sub:null,initialNotifLoad:true,followups:new Map()};
 const icons = {dashboard:'⌂',cases:'▤',tasks:'☷',poster:'▧',bell:'◌',plus:'＋',refresh:'↻',check:'✓',edit:'✎',eye:'◉',close:'✕',download:'↓',logout:'↪',shield:'◇',calendar:'▦'};
 const actorId=()=>state.user?.id||state.profile?.id||'';
 const isJudge=()=>state.profile?.role==='judge';
@@ -615,7 +615,48 @@ function updateCurrentSessionHighlight(now=new Date()){
   else row.removeAttribute('aria-current');
  }
 }
-function caseRow(c){const item=priorOutcome(c);return `<article class="case-row" data-case-session-time="${esc(c.session_time)}"><div class="case-time-slot"><div class="time-pill">${esc(tm(c.session_time))}</div><span class="current-session-label" hidden>موعدها الآن</span></div><div class="case-content"><div class="case-title">${esc(c.case_type||'قضية دون تصنيف')} <span class="badge ${esc(c.status)}">${c.status==='approved'?'✓ ':''}${statusTitle(c.status)}</span></div><div class="case-sub"><span>رقم ${caseNumberButton(c.case_number)}</span><span>${esc(short(c.plaintiffs,34))} × ${esc(short(c.defendants,34))}</span>${sessionNumberBadge(c)}<span class="byline">أدخله: ${esc(profileName(c.created_by))}</span></div><div class="case-assignee"><span aria-hidden="true">👤</span> <span data-case-assignee="${esc(c.id)}">${esc(assigneeLabel(c))}</span></div>${item?.outcome?`<div class="case-assignee">${outcomeLabel(item)}: ${esc(item.outcome)}</div>`:''}</div><div class="case-row-actions"><button class="btn btn-small" data-detail="${esc(c.id)}">عرض</button><button class="btn btn-small btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></article>`;}
+// ===== متابعة الإفادات والخطابات وتقارير الخبراء =====
+const FOLLOWUP_KINDS=[['info','إفادة جهة'],['letter','خطاب'],['expert','تقرير خبير'],['other','أخرى']];
+const FOLLOWUP_STATUS=[['waiting','بانتظار الورود','ready'],['arrived','وصل','approved'],['not_issued','لم يصدر لوجود خلل','danger'],['no_reply','لم يرد','danger'],['other','أخرى (انظر الملاحظة)','draft']];
+const followupLabel=(list,key)=>(list.find(x=>x[0]===key)||[])[1]||'';
+function followupSuggestion(c){
+ const text=latinDigits(`${priorOutcome(c)?.outcome||''} ${c.previous_minutes?.slice(-600)||''}`);
+ if(/خبير|الخبرة|مقدر|هيئة النظر|تقرير/.test(text))return 'expert';
+ if(/إفادة|افادة|ورود/.test(text))return 'info';
+ if(/خطاب|الكتابة إلى|الكتابة الى|مخاطبة|يكتب/.test(text))return 'letter';
+ return null;
+}
+function followupBadge(c){
+ const f=state.followups?.get(c.id);if(!f)return '';
+ const st=FOLLOWUP_STATUS.find(x=>x[0]===f.status)||FOLLOWUP_STATUS[0];
+ return `<span class="badge followup-${esc(st[2])}" title="${esc(f.note||'')}">${esc(followupLabel(FOLLOWUP_KINDS,f.kind))}: ${esc(st[1])}</span>`;
+}
+function followupPanel(c){
+ if(DEMO)return '';
+ const f=state.followups?.get(c.id);const suggest=f?null:followupSuggestion(c);
+ const kind=f?.kind||suggest||'info',status=f?.status||'waiting';
+ const opts=(list,val)=>list.map(([k,l])=>`<option value="${k}" ${k===val?'selected':''}>${l}</option>`).join('');
+ return `<form id="followup-form" class="detail-field detail-wide soft-box followup-card" data-case-id="${esc(c.id)}">
+  <small>متابعة الإفادة أو الخطاب أو تقرير الخبير</small>
+  ${f?'':`<p class="hint">${suggest?'يبدو من الجلسة السابقة أن القضية رُفعت بانتظار '+esc(followupLabel(FOLLOWUP_KINDS,suggest))+'. ':''}فعّل المتابعة إذا كانت القضية بانتظار ورود شيء.</p>`}
+  <div class="followup-grid"><label>النوع<select class="input" name="kind">${opts(FOLLOWUP_KINDS,kind)}</select></label>
+  <label>الحالة<select class="input" name="status">${opts(FOLLOWUP_STATUS,status)}</select></label></div>
+  <label>ملاحظة<input class="input" name="note" maxlength="500" value="${esc(f?.note||'')}" placeholder="مثال: الخطاب لم يُصدَّر لخطأ في رقم الهوية"></label>
+  <div class="case-entry-actions" style="margin-top:10px"><button type="submit" class="btn btn-soft" value="save">${f?'حفظ الحالة':'تفعيل المتابعة'}</button>${f?'<button type="submit" class="btn" value="remove">إلغاء المتابعة</button>':''}</div>
+  ${f?`<p class="hint">آخر تحديث: ${esc(f.updated_by_name||'')} · ${stamp(f.updated_at)}${isJudge()?'':' · يصل القاضي إشعار عند أي حالة غير «بانتظار الورود».'}</p>`:''}
+ </form>`;
+}
+async function saveFollowup(form,submitter){
+ const caseId=form.dataset.caseId,remove=submitter?.value==='remove';
+ const fd=new FormData(form);
+ const btns=form.querySelectorAll('button');btns.forEach(b=>b.disabled=true);
+ const {error}=await state.client.rpc('set_case_followup',{p_case_id:caseId,p_kind:remove?null:fd.get('kind'),p_status:fd.get('status'),p_note:latinDigits(String(fd.get('note')||''))});
+ btns.forEach(b=>b.disabled=false);
+ if(error){notify('تعذّر حفظ المتابعة: '+error.message,'error');return;}
+ notify(remove?'أُلغيت المتابعة.':'تم حفظ حالة المتابعة.','success');
+ await loadAll();
+}
+function caseRow(c){const item=priorOutcome(c);return `<article class="case-row" data-case-session-time="${esc(c.session_time)}"><div class="case-time-slot"><div class="time-pill">${esc(tm(c.session_time))}</div><span class="current-session-label" hidden>موعدها الآن</span></div><div class="case-content"><div class="case-title">${esc(c.case_type||'قضية دون تصنيف')} <span class="badge ${esc(c.status)}">${c.status==='approved'?'✓ ':''}${statusTitle(c.status)}</span></div><div class="case-sub"><span>رقم ${caseNumberButton(c.case_number)}</span><span>${esc(short(c.plaintiffs,34))} × ${esc(short(c.defendants,34))}</span>${sessionNumberBadge(c)}${followupBadge(c)}<span class="byline">أدخله: ${esc(profileName(c.created_by))}</span></div><div class="case-assignee"><span aria-hidden="true">👤</span> <span data-case-assignee="${esc(c.id)}">${esc(assigneeLabel(c))}</span></div>${item?.outcome?`<div class="case-assignee">${outcomeLabel(item)}: ${esc(item.outcome)}</div>`:''}</div><div class="case-row-actions"><button class="btn btn-small" data-detail="${esc(c.id)}">عرض</button><button class="btn btn-small btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></article>`;}
 function emptyState(){return `<div class="card empty"><span class="empty-icon">▤</span><b>لا توجد قضايا في هذا التاريخ</b><p>يمكن إضافة القضايا وتعديلها في أي وقت خلال الأيام الخمسة القادمة.</p></div>`;}
 function sessionsPage(){
  const report=state.screen==='poster';
@@ -1227,7 +1268,7 @@ function detailModal(){
  const c=state.cases.find(x=>x.id===state.detailId);if(!c)return '';
  const info=(title,value,wide=false)=>`<div class="detail-field ${wide?'detail-wide':''}"><small>${title}</small><p>${esc(value||'غير مدخل')}</p></div>`;
  const m=minutesExtract(c),judge=isJudge();
- return `<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>القضية رقم ${caseNumberButton(c.case_number)}</h2><small>${esc(c.case_type)} • ${hijriLong(c.session_date)} • ${tm(c.session_time)}</small></div><div class="toolbar">${judge?'<button type="button" class="btn btn-small btn-soft" data-action="copy-consult" title="ينسخ ملف القضية كاملًا لتلصقه في ChatGPT بنفسك">نسخ للاستشارة</button>':''}<button class="icon-button" data-action="close-detail">✕</button></div></div><div class="modal-body"><div class="status-line"><span class="badge ${esc(c.status)}">${statusTitle(c.status)}</span><span class="pill">${sessionNumberBadge(c)}</span></div><div class="detail-grid" style="margin-top:24px">${info('المدعي',c.plaintiffs)}${info('المدعى عليه',c.defendants)}${info('موضوع الدعوى',c.claim_summary,true)}${info('مُدخل القضية',profileName(c.created_by))}${c.previous_date?info('تاريخ الجلسة الأخيرة',hijriLong(c.previous_date),true):''}${caseHistoryPanel(c)}${judge?`<div class="detail-field detail-wide summary-card"><small>معاينة مختصرة آلية من الضبط الأصلي</small><p>${esc(m.overview)}</p>${m.evidence?`<small class="summary-label">عبارة ورود رفع الجلسة في المحضر</small><p class="quote-text">${esc(m.evidence)}</p>`:''}<small class="summary-note">هذا استخراج نصي أولي غير معتمد، وقد لا يوضح سبب الرفع بدقة. راجع الأصل دائمًا.</small></div><div class="detail-field detail-wide"><button class="btn btn-soft" data-action="toggle-source">${state.showSource?'إخفاء':'عرض'} ضبط الجلسة السابقة كاملًا</button>${state.showSource?`<div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div>`:''}</div>`:`<div class="detail-field detail-wide"><small>الضبط الأصلي كاملًا</small><div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div></div>`}${outcomeEditor(c)}${judge?preparationPanel():''}<div class="detail-field detail-wide"><small>آخر تحديث</small><p>${stamp(c.updated_at)} • ${esc(profileName(c.updated_by||c.created_by))}</p></div></div></div><div class="modal-foot"><button class="btn" data-action="close-detail">إغلاق</button><button class="btn btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></div></div>`;
+ return `<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>القضية رقم ${caseNumberButton(c.case_number)}</h2><small>${esc(c.case_type)} • ${hijriLong(c.session_date)} • ${tm(c.session_time)}</small></div><div class="toolbar">${judge?'<button type="button" class="btn btn-small btn-soft" data-action="copy-consult" title="ينسخ ملف القضية كاملًا لتلصقه في ChatGPT بنفسك">نسخ للاستشارة</button>':''}<button class="icon-button" data-action="close-detail">✕</button></div></div><div class="modal-body"><div class="status-line"><span class="badge ${esc(c.status)}">${statusTitle(c.status)}</span><span class="pill">${sessionNumberBadge(c)}</span></div><div class="detail-grid" style="margin-top:24px">${info('المدعي',c.plaintiffs)}${info('المدعى عليه',c.defendants)}${info('موضوع الدعوى',c.claim_summary,true)}${info('مُدخل القضية',profileName(c.created_by))}${c.previous_date?info('تاريخ الجلسة الأخيرة',hijriLong(c.previous_date),true):''}${caseHistoryPanel(c)}${judge?`<div class="detail-field detail-wide summary-card"><small>معاينة مختصرة آلية من الضبط الأصلي</small><p>${esc(m.overview)}</p>${m.evidence?`<small class="summary-label">عبارة ورود رفع الجلسة في المحضر</small><p class="quote-text">${esc(m.evidence)}</p>`:''}<small class="summary-note">هذا استخراج نصي أولي غير معتمد، وقد لا يوضح سبب الرفع بدقة. راجع الأصل دائمًا.</small></div><div class="detail-field detail-wide"><button class="btn btn-soft" data-action="toggle-source">${state.showSource?'إخفاء':'عرض'} ضبط الجلسة السابقة كاملًا</button>${state.showSource?`<div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div>`:''}</div>`:`<div class="detail-field detail-wide"><small>الضبط الأصلي كاملًا</small><div class="source-box source-expanded">${esc(c.previous_minutes||'لا يوجد ضبط محفوظ')}</div></div>`}${outcomeEditor(c)}${followupPanel(c)}${judge?preparationPanel():''}<div class="detail-field detail-wide"><small>آخر تحديث</small><p>${stamp(c.updated_at)} • ${esc(profileName(c.updated_by||c.created_by))}</p></div></div></div><div class="modal-foot"><button class="btn" data-action="close-detail">إغلاق</button><button class="btn btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></div></div>`;
 }
 function initialTask(){return {title:'',category:'case',case_number:'',details:'',proposed_action:'',due_date:'',priority:'normal',assigned_to:[]};}
 const myAssignment=task=>task.task_assignments?.find(item=>item.assignee_id===actorId());
@@ -1763,15 +1804,16 @@ let loadSequence = 0;
 async function loadAll({background=false}={}){if(DEMO){render();return;}if(!state.profile?.is_active)return;
  const userId=state.user.id;
  const sequence=++loadSequence;
- const [cases,notifications,profiles,tasks,reports,outcomes,unread]=await Promise.all([
+ const [cases,notifications,profiles,tasks,reports,outcomes,unread,followups]=await Promise.all([
   loadSharedCases(),
   state.client.from('notifications').select('*',{count:'exact'}).not('read_at','is',null).order('created_at',{ascending:false}).order('id').limit(state.noticeHistoryLimit||30),
   state.client.from('profiles').select('id,display_name,is_active,role'),
   state.client.from('tasks').select('*,sent_by_me,task_assignments(*)').is('deleted_at',null).order('created_at',{ascending:false}),
   state.client.from('report_approvals').select('*'),loadSessionOutcomes(),
-  state.client.from('notifications').select('*',{count:'exact'}).is('read_at',null).order('created_at',{ascending:false}).limit(100)]);
+  state.client.from('notifications').select('*',{count:'exact'}).is('read_at',null).order('created_at',{ascending:false}).limit(100),
+  state.client.from('case_followups').select('*')]);
  if(state.user?.id!==userId||sequence!==loadSequence)return;
- const snapshot=JSON.stringify([cases.data,notifications.data,profiles.data,tasks.data,reports.data,outcomes,unread.data,unread.count,notifications.count]);
+ const snapshot=JSON.stringify([cases.data,notifications.data,profiles.data,tasks.data,reports.data,outcomes,unread.data,unread.count,notifications.count,followups.data]);
  const changed=snapshot!==lastDataSnapshot;
  lastDataSnapshot=snapshot;
  if(background&&!changed)return;
@@ -1787,6 +1829,7 @@ async function loadAll({background=false}={}){if(DEMO){render();return;}if(!stat
   }
  }
  if(!profiles.error)state.profiles=profiles.data||[];
+ if(!followups.error)state.followups=new Map((followups.data||[]).map(f=>[f.case_id,f]));
  if(background&&state.screen==='diwan'){refreshDiwanNotifications();return;}
  if(!background||(!state.form&&!bulkEntry&&!state.taskForm&&!document.activeElement?.closest('#session-outcome-form')))render();
 }
@@ -1814,7 +1857,7 @@ if(!DEMO){
  document.addEventListener('visibilitychange',refreshCaseAssignments);
  document.addEventListener('visibilitychange',refreshInBackground);
 }
-function subscribeChanges(){if(state.sub)return;state.sub=state.client.channel('case-team-sync').on('postgres_changes',{event:'*',schema:'public',table:'cases'},refreshInBackground).on('postgres_changes',{event:'*',schema:'public',table:'tasks'},refreshInBackground).on('postgres_changes',{event:'*',schema:'public',table:'task_assignments'},refreshInBackground).on('postgres_changes',{event:'*',schema:'public',table:'report_approvals'},refreshInBackground).on('postgres_changes',{event:'*',schema:'public',table:'notifications',filter:`recipient_id=eq.${state.user.id}`},refreshInBackground).subscribe(status=>{if(status==='SUBSCRIBED')refreshInBackground();});}
+function subscribeChanges(){if(state.sub)return;state.sub=state.client.channel('case-team-sync').on('postgres_changes',{event:'*',schema:'public',table:'cases'},refreshInBackground).on('postgres_changes',{event:'*',schema:'public',table:'tasks'},refreshInBackground).on('postgres_changes',{event:'*',schema:'public',table:'task_assignments'},refreshInBackground).on('postgres_changes',{event:'*',schema:'public',table:'report_approvals'},refreshInBackground).on('postgres_changes',{event:'*',schema:'public',table:'case_followups'},refreshInBackground).on('postgres_changes',{event:'*',schema:'public',table:'notifications',filter:`recipient_id=eq.${state.user.id}`},refreshInBackground).subscribe(status=>{if(status==='SUBSCRIBED')refreshInBackground();});}
 async function markRead(filters={},redraw=true){
  const actor=actorId();
  const {error}=DEMO?{}:await state.client.rpc('read_circuit_notifications',filters);
@@ -1886,7 +1929,7 @@ document.addEventListener('focusout',e=>{
   if(group.isConnected&&!group.contains(document.activeElement))reorderBulkRows();
  },0);
 });
-document.addEventListener('submit',e=>{if(e.target.id==='account-login-form'){e.preventDefault();void loginAccount(e.target);return;}if(e.target.id==='session-outcome-form'){e.preventDefault();void saveSessionOutcome(e.target);return;}if(e.target.id==='judge-preparation'){e.preventDefault();void saveCasePreparation();return;}if(e.target.id==='bulk-case-form'){e.preventDefault();void saveBulkEntry();}if(e.target.id==='case-form'){e.preventDefault();saveCase('ready');}if(e.target.id==='task-form'){e.preventDefault();saveTask();}});
+document.addEventListener('submit',e=>{if(e.target.id==='account-login-form'){e.preventDefault();void loginAccount(e.target);return;}if(e.target.id==='session-outcome-form'){e.preventDefault();void saveSessionOutcome(e.target);return;}if(e.target.id==='judge-preparation'){e.preventDefault();void saveCasePreparation();return;}if(e.target.id==='followup-form'){e.preventDefault();void saveFollowup(e.target,e.submitter);return;}if(e.target.id==='bulk-case-form'){e.preventDefault();void saveBulkEntry();}if(e.target.id==='case-form'){e.preventDefault();saveCase('ready');}if(e.target.id==='task-form'){e.preventDefault();saveTask();}});
 let hearingsContainer;
 let hearingsMount;
 function showHearings(){
