@@ -1243,7 +1243,7 @@ function sessionDecision(row){
 const arabicDigits=n=>String(n).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]);
 // اسم المحادثة في ChatGPT: «قضية» + اسم عائلة المدعي الأول، أو اسم الجهة إذا كان المدعي شركة أو جهة.
 function consultTitle(c){
- const first=latinDigits(String(c.plaintiffs||'')).split(/[،,؛;\n]|\s+و\s*(?=\S)/)[0].replace(/\(.*?\)/g,'').replace(/[|«»"]/g,'').trim();
+ const first=latinDigits(String(c.plaintiffs||'')).split(/[،,؛;\n]|\s+و\s+/)[0].replace(/\(.*?\)/g,'').replace(/[|«»"]/g,'').trim();
  if(!first)return `قضية ${latinDigits(String(c.case_number||''))}`;
  const words=first.split(/\s+/).filter(Boolean);
  const entity=/^(شركة|مؤسسة|مصنع|مكتب|بنك|مصرف|مجموعة|جمعية|وزارة|أمانة|بلدية|هيئة|مستشفى|مدارس|مجمع)$/;
