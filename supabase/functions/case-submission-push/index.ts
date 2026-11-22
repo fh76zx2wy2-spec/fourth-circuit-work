@@ -76,11 +76,13 @@ Deno.serve(async (request) => {
   if (!data.jobs.length) return new Response(null, { status: 204 });
   if (!data.vapid) return new Response(null, { status: 503 });
 
-  await Promise.all(data.jobs.map(async ({ deliveryId, id, taskId, sender, attempt, subscription }) => {
+  await Promise.all(data.jobs.map(async ({ deliveryId, id, taskId, sender, attempt, subscription, text }) => {
     let result = 'sent';
     try {
       const eventId = deliveryId || id;
-      const payload = taskId ? { taskId, sender, eventId } : { id, eventId };
+      // title/body: تفاصيل المهمة (العنوان، رقم القضية، الرسالة أو السبب أو التوجيه). المحتوى مشفّر حتى الجهاز.
+      const details = text && typeof text.title === 'string' ? { title: text.title, body: text.body ?? '' } : {};
+      const payload = taskId ? { taskId, sender, eventId, ...details } : { id, eventId };
       await webpush.sendNotification(subscription, JSON.stringify(payload), pushOptions(data.vapid, eventId));
     } catch (error) {
       if (error.statusCode !== 404 && error.statusCode !== 410) return;

@@ -67,6 +67,7 @@ begin
      update public.tasks set judge_directive=note, directive_at=now(), sender_ack_at=null where id=p_task;
      insert into public.notifications(recipient_id,actor_id,task_id,kind,message)
      values(sender,actor,p_task,'updated',left(format('توجيه القاضي في المهمة «%s»: %s',title,note),450));
+     perform private.push_directed_task(p_task,sender,'directive',a.attempt);
    end if;
    -- «يكفي تنفيذ أحدهم»: تُغلق عند الباقين الذين لم ينفذوها، ويصلهم إشعار.
    if mode='any' then

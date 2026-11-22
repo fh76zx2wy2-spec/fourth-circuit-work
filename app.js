@@ -479,7 +479,7 @@ function dashboard(){
  return `<div class="welcome-banner"><div><span class="hero-kicker">لوحة تنظيم العمل</span><h1>كل أعمال الدائرة في مكان واحد</h1><p>قضايا الجلسات، ومحاضرها، والمهام الواردة من الكتّاب وأمناء السر؛ تُراجع وتُنجز من لوحة واحدة.</p><div class="hero-date">◷ ${hijriLong(state.filterDate)}</div></div><div class="hero-deco" aria-hidden="true"><span></span><span></span><span></span><span></span></div></div>
  <div class="stats">${stat('قضايا اليوم المحدد',all.length,'بحسب جدول الجلسات','▤')}${stat('قضايا معتمدة',approved,'تُعتمد عند الحفظ','✓')}${stat('مهام قيد الإنجاز',pending.length,urgent.length+' منها عاجلة','☷')}</div>
  <div class="dashboard-columns"><section class="dashboard-main"><div class="section-head"><div><span class="section-eyebrow">جلسات الدائرة</span><h2>قضايا اليوم المختار</h2></div><div class="section-actions"><span class="date-heading">اليوم الهجري:</span>${workdaySelect(state.filterDate,'data-filter-date','تصفية القضايا حسب يوم العمل')}<div class="case-entry-actions"><button class="btn btn-primary" data-action="new-case">＋ إضافة قضية</button></div></div></div>
- ${previousSessionsPicker()}${dayTabs()}<div class="cases-list">${all.length?all.map(c=>caseRow(c)).join(''):emptyState()}</div><div class="compact-actions"><button class="btn btn-soft" data-nav="cases">عرض جميع القضايا ←</button><button class="btn btn-soft" data-nav="poster">حفظ تقرير الجلسات كصورة ↓</button></div></section>
+ ${previousSessionsPicker()}${dayTabs()}<div class="cases-list">${dayCasesList(all,emptyState())}</div><div class="compact-actions"><button class="btn btn-soft" data-nav="cases">عرض جميع القضايا ←</button><button class="btn btn-soft" data-nav="poster">حفظ تقرير الجلسات كصورة ↓</button></div></section>
  <aside class="dashboard-side"><div class="card aside-card"><div class="side-card-title"><div><span class="section-eyebrow">مهام ومتابعة</span><h3>المطلوب إنجازه</h3></div><button class="btn btn-primary add-task-button" type="button" data-action="new-task">＋ إضافة مهمة</button></div>${pending.length?pending.slice(0,5).map(taskCardMini).join(''):'<div class="mini-empty">لا توجد مهام معلّقة حاليًا.</div>'}<button class="text-button side-more" data-nav="tasks">فتح قائمة المتابعة ←</button></div>
  <div class="card aside-card"><div class="side-card-title"><h3>آخر الإضافات والتحديثات</h3></div>${state.notifications.length?`<div class="notice-list">${state.notifications.slice(0,4).map(notificationItem).join('')}</div>`:'<p class="hint">تظهر هنا إشعارات من أضاف قضية أو مهمة أو أنجزها.</p>'}</div></aside></div><p class="footer-note">التقرير يستند إلى ما أدخله أمناء السر من تقاضي؛ والمقتطف آلي أولي، ولا يغني عن الضبط الأصلي.</p>`;
 }
@@ -656,6 +656,24 @@ async function saveFollowup(form,submitter){
  notify(remove?'أُلغيت المتابعة.':'تم حفظ حالة المتابعة.','success');
  await loadAll();
 }
+// اليوم الجاري: الجلسات المنتهية تنزل تحت سطر «الجلسات السابقة لهذا اليوم»، وتظهر بالضغط عليه.
+let pastSessionsOpen=false,pastSessionsKey='';
+const riyadhMinutes=(now=new Date())=>((now.getUTCHours()+3)%24)*60+now.getUTCMinutes();
+const minutesOf=t=>{const [h,m]=String(t||'').split(':').map(Number);return Number.isFinite(h)?h*60+(m||0):null;};
+function sessionEnded(c,now=riyadhMinutes()){
+ const start=minutesOf(c.session_time);if(start===null)return false;
+ const end=minutesOf(c.session_end_time)??start+30;
+ return end<=now;
+}
+function dayCasesList(list,empty){
+ if(!list.length)return empty;
+ if(state.filterDate!==todayRiyadh())return list.map(c=>caseRow(c)).join('');
+ const now=riyadhMinutes(),past=list.filter(c=>sessionEnded(c,now)),next=list.filter(c=>!sessionEnded(c,now));
+ pastSessionsKey=past.map(c=>c.id).join(',');
+ if(!past.length)return next.map(c=>caseRow(c)).join('');
+ return `${next.map(c=>caseRow(c)).join('')||'<p class="hint">انتهت جلسات اليوم.</p>'}
+ <details class="past-sessions" data-past-sessions ${pastSessionsOpen?'open':''}><summary>الجلسات السابقة لهذا اليوم <span>${past.length}</span></summary>${past.map(c=>caseRow(c)).join('')}</details>`;
+}
 function caseRow(c){const item=priorOutcome(c);return `<article class="case-row" data-case-session-time="${esc(c.session_time)}"><div class="case-time-slot"><div class="time-pill">${esc(tm(c.session_time))}</div><span class="current-session-label" hidden>موعدها الآن</span></div><div class="case-content"><div class="case-title">${esc(c.case_type||'قضية دون تصنيف')} <span class="badge ${esc(c.status)}">${c.status==='approved'?'✓ ':''}${statusTitle(c.status)}</span></div><div class="case-sub"><span>رقم ${caseNumberButton(c.case_number)}</span><span>${esc(short(c.plaintiffs,34))} × ${esc(short(c.defendants,34))}</span>${sessionNumberBadge(c)}${followupBadge(c)}<span class="byline">أدخله: ${esc(profileName(c.created_by))}</span></div><div class="case-assignee"><span aria-hidden="true">👤</span> <span data-case-assignee="${esc(c.id)}">${esc(assigneeLabel(c))}</span></div>${item?.outcome?`<div class="case-assignee">${outcomeLabel(item)}: ${esc(item.outcome)}</div>`:''}</div><div class="case-row-actions"><button class="btn btn-small" data-detail="${esc(c.id)}">عرض</button><button class="btn btn-small btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></article>`;}
 function emptyState(){return `<div class="card empty"><span class="empty-icon">▤</span><b>لا توجد قضايا في هذا التاريخ</b><p>يمكن إضافة القضايا وتعديلها في أي وقت خلال الأيام الخمسة القادمة.</p></div>`;}
 function sessionsPage(){
@@ -665,7 +683,7 @@ function sessionsPage(){
   <button type="button" data-nav="poster" class="${report?'active':''}" aria-pressed="${report}">تصميم التقرير</button>
  </div>${report?posterPage():casesPage()}`;
 }
-function casesPage(){return `<div class="eyebrow">السجل المشترك للقضايا</div><h1 class="heading">جدول القضايا والجلسات</h1><p class="subheading">إضافة وتعديل وحفظ بيانات الجلسات مع الاحتفاظ بسجل التعديلات.</p><div class="filters">${workdaySelect(state.filterDate,'data-filter-date','تصفية القضايا حسب يوم العمل')}<input type="search" class="search" data-search placeholder="ابحث برقم القضية أو بأحد أطرافها..." value="${esc(state.search)}"/><div class="case-entry-actions"><button class="btn btn-primary" data-action="new-case">＋ إضافة قضية</button></div></div>${previousSessionsPicker()}${dayTabs()}<div class="cases-list">${filteredCases().length?filteredCases().map(c=>caseRow(c)).join(''):emptyState()}</div>`;}
+function casesPage(){return `<div class="eyebrow">السجل المشترك للقضايا</div><h1 class="heading">جدول القضايا والجلسات</h1><p class="subheading">إضافة وتعديل وحفظ بيانات الجلسات مع الاحتفاظ بسجل التعديلات.</p><div class="filters">${workdaySelect(state.filterDate,'data-filter-date','تصفية القضايا حسب يوم العمل')}<input type="search" class="search" data-search placeholder="ابحث برقم القضية أو بأحد أطرافها..." value="${esc(state.search)}"/><div class="case-entry-actions"><button class="btn btn-primary" data-action="new-case">＋ إضافة قضية</button></div></div>${previousSessionsPicker()}${dayTabs()}<div class="cases-list">${dayCasesList(filteredCases(),emptyState())}</div>`;}
 function posterPage(){
  const cases=listForDate().filter(x=>!state.posterApprovedOnly||x.status==='approved');
  return `<div class="eyebrow">تقرير جاهز للمشاركة</div><h1 class="heading">تصميم تقرير الجلسات</h1><p class="subheading">اختر أحد أيام العمل الخمسة، وصدّر تقرير ذلك اليوم كصورة.</p><div class="poster-controls">${workdaySelect(state.filterDate,'data-filter-date','اختيار يوم التقرير')}<label class="pill"><input type="checkbox" data-approved-only ${state.posterApprovedOnly?'checked':''} /> المعتمدة فقط</label>${isJudge()?`<button class="btn btn-accent" data-action="approve-report" ${!cases.length||listForDate().some(c=>c.status!=='approved')?'disabled':''}>✓ ${isReportApproved()?'التقرير معتمد':'اعتماد التقرير'}</button>`:''}<button class="btn btn-primary" data-action="export-png" ${!cases.length?'disabled':''}>↓ حفظ التصميم كصورة PNG</button><button class="btn" data-action="share-png" ${!cases.length?'disabled':''}>↗ مشاركة الصورة</button></div><div class="report-status">${isReportApproved()?'✓ التقرير معتمد':'◇ التقرير بانتظار الاعتماد'} · ${esc(state.profile?.display_name||'')}</div><div class="poster-page"><div class="poster-head"><div><h2>تنظيم أعمال الدائرة الرابعة</h2><p>تقرير القضايا حسب يوم العمل</p></div><div style="font-size:31px;color:var(--brown)">▦</div></div><div class="poster-banner"><span>${hijriLong(state.filterDate)}</span><span>${cases.length} قضايا</span></div>${cases.length?cases.map((c,i)=>{const m=minutesExtract(c);return `<div class="poster-row"><div class="status-line"><h3>${i+1}. ${esc(c.case_type||'قضية')} — ${esc(tm(c.session_time))}</h3><span class="badge ${esc(c.status)}">${statusTitle(c.status)}</span></div><p class="poster-info">رقم القضية ${caseNumberButton(c.case_number)} | ${caseStageTitle(c)} | ${esc(short(c.plaintiffs,45))} × ${esc(short(c.defendants,45))} | أدخلها: ${esc(profileName(c.created_by))}</p><div class="poster-line"><strong>موضوع الدعوى:</strong> ${esc(c.claim_summary||'غير مدخل')}</div><div class="poster-line"><strong>مقتطف من الضبط السابق:</strong> ${esc(m.overview)}</div>${m.evidence?`<div class="poster-line"><strong>العبارة المتعلقة برفع الجلسة:</strong> ${esc(m.evidence)}</div>`:''}</div>`;}).join(''):'<p class="hint">لا توجد قضايا للعرض في اليوم المختار.</p>'}<div class="poster-footer">المقتطف مستخرج آليًا للمراجعة من النص الأصلي، ولا يغني عنه.</div></div><p class="footer-note">تحتوي الصورة على بيانات القضايا؛ لا تُشارك إلا بالطرق المصرح بها.</p>`;
@@ -2045,4 +2063,12 @@ window.addEventListener('hashchange',openNotificationLink);
 if(location.hash==='#hearings')state.screen='hearings';
 init();
 window.setInterval(()=>{updateClock();refreshDisplayWorkday();},1000);
+document.addEventListener('toggle',e=>{if(e.target.matches?.('[data-past-sessions]'))pastSessionsOpen=e.target.open;},true);
+window.setInterval(()=>{
+ if(!state.user||state.detailId||state.editorId||state.taskEditorId||!['dashboard','cases'].includes(state.screen))return;
+ if(document.activeElement?.matches?.('input,textarea,select'))return;
+ const today=todayRiyadh();if(state.filterDate!==today)return;
+ const key=state.cases.filter(c=>c.session_date===today&&!c.deleted_at&&sessionEnded(c)).map(c=>c.id).sort().join(',');
+ if(key!==pastSessionsKey.split(',').filter(Boolean).sort().join(','))render();
+},60000);
 document.addEventListener('visibilitychange',refreshDisplayWorkday);

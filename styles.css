@@ -355,3 +355,9 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .task-note-form{display:grid;gap:6px;margin-top:8px}.task-note-form label{font-size:12px;color:var(--muted)}.task-note-form .input{margin-top:4px;min-height:58px}.task-note-form .btn{justify-self:start}
 .task-templates{margin-bottom:14px;padding:12px;border:1px dashed #b9d6cc;border-radius:12px;background:#f5faf8}.task-templates small{display:block;color:var(--muted);margin-bottom:8px}.task-templates div{display:flex;flex-wrap:wrap;gap:6px}
 .task-note.directive{background:#fff5df;color:#5c4512;border:1px solid #f0dca8}
+.past-sessions{margin-top:14px;border-top:2px dashed #c9d8d2;padding-top:10px}
+.past-sessions>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:#f1f5f3;color:#4e6259;font-weight:600}
+.past-sessions>summary::-webkit-details-marker{display:none}
+.past-sessions>summary:before{content:"▸";transition:transform .2s}.past-sessions[open]>summary:before{transform:rotate(90deg)}
+.past-sessions>summary span{background:#dfe9e5;border-radius:20px;padding:0 9px;font-size:12px}
+.past-sessions[open]>.case-row{opacity:.75}
