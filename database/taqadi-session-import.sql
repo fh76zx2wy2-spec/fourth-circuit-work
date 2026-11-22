@@ -92,7 +92,7 @@ as $function$
 declare
   me uuid := (select auth.uid());
   me_name text;
-  it jsonb; cn text; t time; existing public.cases; status text; missing text[];
+  it jsonb; cn text; t time; te time; existing public.cases; status text; missing text[];
   out_items jsonb := '[]'::jsonb; added int:=0; updated int:=0; review int:=0; same int:=0; failed int:=0;
   prev jsonb;
 begin
@@ -110,10 +110,17 @@ begin
     begin
       t := (it->>'time')::time;
     exception when others then t := null; end;
+    begin
+      te := nullif(it->>'end_time','')::time;
+    exception when others then te := null; end;
     if cn is null or cn !~ '^\d{9,10}$' then status:='needs_review'; missing:=array['رقم القضية']; review:=review+1;
     else
       select * into existing from public.cases where case_number=cn and session_date=p_date and deleted_at is null limit 1;
       if found then
+        -- وقت النهاية من تقاضي (لا يُدخَل يدويًا) يُحدَّث وحده دون بقية البيانات.
+        if te is not null and existing.session_end_time is distinct from te then
+          begin update public.cases set session_end_time=te where id=existing.id; exception when others then null; end;
+        end if;
         -- لا يُغيّر وقت قضية موجودة آليًا: يُسجّل الاختلاف ويظهر في «مراجعة جلسات اليوم» ليقرره المراجع.
         if t is not null and existing.session_time is distinct from t then
           status:='time_differs'; missing:=array['الوقت مختلف عن تقاضي']; updated:=updated+1;
@@ -134,11 +141,11 @@ begin
         else
           begin
             insert into public.cases(case_number,session_date,session_time,plaintiffs,defendants,case_type,claim_summary,
-              stage,session_number,previous_date,previous_minutes,created_by,updated_by,summary_mode)
+              stage,session_number,previous_date,previous_minutes,created_by,updated_by,summary_mode,session_end_time)
             values(cn,p_date,t,btrim(it->>'plaintiffs'),btrim(it->>'defendants'),btrim(it->>'case_type'),btrim(it->>'claim_summary'),
               it->>'stage',case when it->>'stage'='followup' then (it->>'session_number')::smallint end,
               case when it->>'stage'='followup' then (it->>'previous_date')::date end,
-              case when it->>'stage'='followup' then it->>'previous_minutes' else '' end,me,me,'automatic');
+              case when it->>'stage'='followup' then it->>'previous_minutes' else '' end,me,me,'automatic',te);
             status:='added'; added:=added+1;
           exception when others then status:='failed'; missing:=array[sqlerrm]; failed:=failed+1; end;
         end if;

@@ -105,9 +105,11 @@ export const isDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.is
 /** Unsaved day: start with the organizer's session times for that date (set by the host page). */
 export function organizerDay(date: string): DayRecord {
   try {
-    const slots = (globalThis as { __organizerHearings?: (d: string) => Array<{ h: number; m: number }> }).__organizerHearings?.(date) ?? [];
+    const slots = (globalThis as { __organizerHearings?: (d: string) => Array<{ h: number; m: number; endH?: number; endM?: number }> }).__organizerHearings?.(date) ?? [];
     if (!slots.length) return blankDay();
-    return { hearings: slots.slice(0, 60).map((x) => ({ id: newId(), h: x.h, m: x.m, clerk: null })), active: [...CLERKS], distributed: false };
+    const list = slots.slice(0, 60), last = list[list.length - 1];
+    // Only the final hearing keeps an explicit end (Taqadi's); earlier ones end at the next start.
+    return { hearings: list.map((x) => ({ id: newId(), h: x.h, m: x.m, ...(x === last && x.endH !== undefined && x.endM !== undefined ? { endH: x.endH, endM: x.endM } : {}), clerk: null })), active: [...CLERKS], distributed: false };
   } catch {
     return blankDay();
   }
