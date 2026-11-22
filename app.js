@@ -1997,7 +1997,7 @@ function showHearings(){
  if(hearingsMount)return;
  // توزيع الجلسات: اليوم غير المحفوظ يُعبّأ تلقائيًا بأوقات جلسات المنظم (المطابقة لتقاضي).
  globalThis.__organizerHearings=date=>state.cases.filter(c=>c.session_date===date&&!c.deleted_at&&c.session_time)
-  .map(c=>{const [h,m]=String(c.session_time).split(':').map(Number);const hh=Math.min(14,Math.max(8,h||8));return {h:hh,m:hh===14?0:Math.round((m||0)/5)*5%60};})
+  .map(c=>{const [h,m]=String(c.session_time).split(':').map(Number);const hh=Math.min(14,Math.max(8,h||8));return {h:hh,m:hh===14?0:Math.min(59,Math.max(0,m||0))};})
   .sort((a,b)=>a.h*60+a.m-(b.h*60+b.m));
  // الاسم الكامل لمنشئ الجدول في الصورة المحفوظة.
  globalThis.__hearingsCreatorName=name=>{const n=String(name||'');
