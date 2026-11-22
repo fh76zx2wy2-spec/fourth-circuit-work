@@ -1241,12 +1241,22 @@ function sessionDecision(row){
 }
 // «نسخ للاستشارة»: ينسخ ملف القضية بجلساتها ليلصقه القاضي بنفسه في ChatGPT. لا يُرسل شيء آليًا.
 const arabicDigits=n=>String(n).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]);
+// اسم المحادثة في ChatGPT: «قضية» + اسم عائلة المدعي الأول، أو اسم الجهة إذا كان المدعي شركة أو جهة.
+function consultTitle(c){
+ const first=latinDigits(String(c.plaintiffs||'')).split(/[،,؛;\n]|\s+و\s*(?=\S)/)[0].replace(/\(.*?\)/g,'').replace(/[|«»"]/g,'').trim();
+ if(!first)return `قضية ${latinDigits(String(c.case_number||''))}`;
+ const words=first.split(/\s+/).filter(Boolean);
+ const entity=/^(شركة|مؤسسة|مصنع|مكتب|بنك|مصرف|مجموعة|جمعية|وزارة|أمانة|بلدية|هيئة|مستشفى|مدارس|مجمع)$/;
+ const name=entity.test(words[0])?words.slice(0,2).join(' '):words[words.length-1];
+ return `قضية ${name}`;
+}
 function consultText(c){
  const plain=v=>latinDigits(String(v??'')).trim();
  const hText=v=>{const [d,m,y]=String(v||'').split('/').map(Number);return hijriMonths[m-1]?`${d} ${hijriMonths[m-1]} ${y}هـ`:String(v||'');};
  let rows=caseHistory?.caseNumber===c.case_number?caseHistory.rows:[];
  if(!rows.length&&c.previous_minutes){const p=hijriParts(c.previous_date);rows=[{session_hijri:p?`${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}/${p.year}`:'',minutes:c.previous_minutes}];}
- const head=[`القضية رقم ${plain(c.case_number)}${c.case_type?' — '+plain(c.case_type):''}`,
+ const title=consultTitle(c);
+ const head=[`سمِّ هذه المحادثة: ${title}`,'',`القضية رقم ${plain(c.case_number)}${c.case_type?' — '+plain(c.case_type):''}`,
   c.plaintiffs&&`المدعي: ${plain(c.plaintiffs)}`,c.defendants&&`المدعى عليه: ${plain(c.defendants)}`,
   c.claim_summary&&`موضوع الدعوى: ${plain(c.claim_summary)}`,c.claim_requests&&`الطلبات: ${plain(c.claim_requests)}`].filter(Boolean);
  const sessions=rows.map((r,i)=>`الجلسة ${arabicDigits(i+1)}${r.session_hijri?' ('+hText(r.session_hijri)+')':''}:\n${plain(r.minutes)||'لا يوجد ضبط محفوظ'}`);
