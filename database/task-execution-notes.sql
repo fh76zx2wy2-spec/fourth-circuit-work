@@ -5,6 +5,9 @@ alter table public.tasks add column if not exists completion_mode text not null 
 alter table public.task_assignments add column if not exists execution_note text;
 alter table public.task_assignments add column if not exists return_reason text;
 alter table private.task_assignment_events add column if not exists note text;
+alter table public.tasks add column if not exists judge_directive text;
+alter table public.tasks add column if not exists directive_at timestamptz;
+alter table public.tasks add column if not exists sender_ack_at timestamptz;
 
 create or replace function public.save_directed_task(p_task jsonb)
 returns void language plpgsql security definer set search_path to ''
@@ -41,11 +44,11 @@ create or replace function public.change_task_assignment(p_task uuid, p_assignee
 returns void language plpgsql security definer set search_path to ''
 as $function$
 declare a public.task_assignments; actor uuid:=auth.uid(); judge boolean:=private.is_judge();
- target uuid; title text; mode text; event text; msg text; note text:=nullif(btrim(coalesce(p_note,'')),'');
+ target uuid; title text; mode text; sender uuid; event text; msg text; note text:=nullif(btrim(coalesce(p_note,'')),'');
  other record;
 begin
  if not private.is_active_user() then raise exception 'Forbidden' using errcode='42501'; end if;
- select t.title,t.completion_mode into title,mode from public.tasks t where t.id=p_task and t.deleted_at is null;
+ select t.title,t.completion_mode,t.created_by into title,mode,sender from public.tasks t where t.id=p_task and t.deleted_at is null;
  if not found then raise exception 'Task unavailable'; end if;
  select * into a from public.task_assignments where task_id=p_task and assignee_id=p_assignee for update;
  if not found or not (judge or actor=p_assignee) then raise exception 'Forbidden' using errcode='42501'; end if;
@@ -59,6 +62,11 @@ begin
    if not judge then
      select id into target from public.profiles where private.is_submission_recipient(id);
      event:='executed'; msg:=format('نفّذ %s المهمة: %s%s',a.assignee_name,title,case when note is not null then ' — «'||note||'»' else '' end);
+   elsif note is not null and sender is distinct from actor then
+     -- توجيه القاضي لمرسل المهمة: يصله إشعار، ولا يملك الرد عليه (يرسل مهمة جديدة إن احتاج).
+     update public.tasks set judge_directive=note, directive_at=now(), sender_ack_at=null where id=p_task;
+     insert into public.notifications(recipient_id,actor_id,task_id,kind,message)
+     values(sender,actor,p_task,'updated',left(format('توجيه القاضي في المهمة «%s»: %s',title,note),450));
    end if;
    -- «يكفي تنفيذ أحدهم»: تُغلق عند الباقين الذين لم ينفذوها، ويصلهم إشعار.
    if mode='any' then
@@ -99,3 +107,15 @@ grant execute on function public.change_task_assignment(uuid,uuid,text,text) to 
 create or replace function public.change_task_assignment(p_task uuid, p_assignee uuid, p_action text)
 returns void language sql security definer set search_path to ''
 as $$ select public.change_task_assignment(p_task,p_assignee,p_action,null) $$;
+
+-- «اطّلعت»: مرسل المهمة يؤكد اطلاعه على توجيه القاضي، فتختفي المهمة من قائمته.
+create or replace function public.ack_task_directive(p_task uuid)
+returns void language plpgsql security definer set search_path to ''
+as $function$
+begin
+ if not private.is_active_user() then raise exception 'Forbidden' using errcode='42501'; end if;
+ update public.tasks set sender_ack_at=now()
+ where id=p_task and created_by=(select auth.uid()) and judge_directive is not null and sender_ack_at is null;
+end $function$;
+revoke all on function public.ack_task_directive(uuid) from public, anon;
+grant execute on function public.ack_task_directive(uuid) to authenticated;
