@@ -23,6 +23,7 @@ vi.mock("@/lib/schedule", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/schedule")>(),
   todayRiyadh: () => "2026-11-15",
 }));
+vi.mock("@/lib/export-font", () => ({ exportFontCSS: vi.fn(async () => "@font-face{font-family: Thmanyah Sans;}") }));
 vi.mock("html-to-image", () => ({ toBlob: vi.fn(async () => new Blob(["schedule"], { type: "image/png" })) }));
 
 afterEach(() => {
@@ -41,7 +42,7 @@ it.each(["secretary", "admin"] as const)("lets an authorized %s prepare and shar
   const share = vi.fn(async () => {});
   Object.defineProperty(navigator, "share", { configurable: true, value: share });
   Object.defineProperty(navigator, "canShare", { configurable: true, value: () => true });
-  Object.defineProperty(document, "fonts", { configurable: true, value: { ready: Promise.resolve() } });
+  Object.defineProperty(document, "fonts", { configurable: true, value: { ready: Promise.resolve(), load: vi.fn(async () => []) } });
 
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
   render(<Index />);

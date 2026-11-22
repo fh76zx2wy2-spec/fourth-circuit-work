@@ -2038,7 +2038,7 @@ function showHearings(){
   if(/بكري|^يحيى/.test(n))return 'يحيى محمد إبراهيم بكري';
   if(/زياد|البابطين/.test(n))return 'زياد بن محمد البابطين';
   return n;};
- hearingsMount=import('./assets/hearings/main.js?v=5.0.30').then(module=>{
+ hearingsMount=import('./assets/hearings/main.js?v=5.0.31').then(module=>{
   module.mount(hearingsContainer,{
    getToken:async()=>state.client?(await state.client.auth.getSession()).data.session?.access_token??null:null,
    subscribe:listener=>{

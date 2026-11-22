@@ -1,3 +1,4 @@
+import { exportFontCSS } from "./lib/export-font";
 import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays, ChevronDown, Clock, Download, Loader2, Plus, Shuffle, Trash2,
@@ -250,11 +251,11 @@ export function Index() {
   async function renderPng(): Promise<Blob> {
     const node = cardRef.current;
     if (!node) throw new Error("no card");
+    await Promise.all([400, 500, 600, 700].map(weight => document.fonts.load(`${weight} 24px "Thmanyah Sans"`, "توزيع الجلسات")));
     await document.fonts.ready;
     const { toBlob } = await import("html-to-image");
-    const opts = { pixelRatio: 2, cacheBust: true, width: node.offsetWidth, height: node.offsetHeight };
-    let blob: Blob | null = null;
-    try { blob = await toBlob(node, opts); } catch { blob = await toBlob(node, { ...opts, skipFonts: true }); }
+    const opts = { pixelRatio: 2, cacheBust: true, width: node.offsetWidth, height: node.offsetHeight, fontEmbedCSS: await exportFontCSS() };
+    const blob = await toBlob(node, opts);
     if (!blob) throw new Error("empty");
     return blob;
   }
