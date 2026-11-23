@@ -1361,7 +1361,7 @@ function lessonItem(l,withCase=true){
  return `<li class="lesson"><div class="lesson-head"><span class="lesson-kind">${kind}</span>${(l.tags||[]).map(t=>`<span class="lesson-tag">${esc(t)}</span>`).join('')}${withCase?`<small>${caseNumberButton(l.case)} · ${hijriDeed(l.deed)}</small>`:''}</div>${l.principle?`<p class="lesson-principle">${esc(l.principle)}</p>`:''}${l.summary?`<details><summary>تفاصيل القضية</summary><p>${esc(l.summary)}</p></details>`:(l.principle?'':'<p class="hint">صك نقض جديد، ولم يُلخَّص سببه بعد.</p>')}</li>`;
 }
 function lessonsBlock(lessons,category){
- return `<div class="lessons"><b class="lessons-title">⚖ دروس النقض في «${esc(category)}»</b><ul class="memory-list">${lessons.slice(0,3).map(l=>lessonItem(l)).join('')}</ul></div>`;
+ return `<details class="lessons"><summary class="lessons-title">⚖ دروس النقض في «${esc(category)}» <span>${lessons.length}</span></summary><ul class="memory-list">${lessons.slice(0,3).map(l=>lessonItem(l)).join('')}</ul></details>`;
 }
 function memorySearchBox(){
  if(!isJudge())return '';
