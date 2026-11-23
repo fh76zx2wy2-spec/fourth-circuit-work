@@ -689,10 +689,8 @@ function daysLeftLabel(iso){
 // الضغط على قضية في المؤشر: تُفتح في جدول الجلسات إن كان يومها ظاهرًا فيه، وإلا يُبيَّن متى تصل.
 function openInsightCase(caseNumber,iso){
  const c=state.cases.find(x=>x.case_number===caseNumber&&x.session_date===iso&&!x.deleted_at);
- if(c&&displayDays().includes(iso)){
-  state.casesView='list';state.historyDate=null;state.filterDate=iso;state.search='';render();
-  void openCaseDetail(c.id);return;
- }
+ // تُفتح القضية فوق «مؤشر القضايا» نفسه، فإذا أُغلقت عاد القاضي إلى مكانه في المؤشر.
+ if(c){void openCaseDetail(c.id);return;}
  notify(`القضية ${latinDigits(caseNumber)} لم تصل إلى جدول الجلسات بعد؛ موعدها ${daysLeftLabel(iso)} (${hijriText(hijriFromIso(iso))}). تُدخل تلقائيًا حين يدخل يومها نافذة الأيام الخمسة.`);
 }
 function hijriFromIso(iso){const p=hijriParts(iso);return p?`${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}/${p.year}`:'';}
@@ -702,7 +700,7 @@ function insightCard(c,i){
   .map(([r,n])=>`<span class="reason-chip ${REASON_TONE[r]||'other'}">${esc(r)}${n>1?` ×${n}`:''}</span>`).join('');
  const dots=(c.timeline||[]).map(t=>`<i class="dot ${REASON_TONE[t.reason]||'other'}" title="${esc(hijriText(t.hijri))} · ${esc(t.reason)}"></i>`).join('');
  const inTable=state.cases.some(x=>x.case_number===c.case&&x.session_date===c.next_date&&!x.deleted_at)&&displayDays().includes(c.next_date);
- return `<article class="insight-card ${tone}" style="--i:${i}" data-insight-case="${esc(c.case)}" data-insight-date="${esc(c.next_date||'')}" role="button" tabindex="0" title="${inTable?'فتح القضية في جدول الجلسات':'لم تصل إلى جدول الجلسات بعد'}"><div class="insight-count"><b>${c.sessions}</b><small>جلسة</small></div><div class="insight-body"><div class="insight-title">${caseNumberButton(c.case)} <span>${esc(c.type||'')}</span></div><div class="insight-parties">${esc(short(c.plaintiffs||'',40))} × ${esc(short(c.defendants||'',40))}</div><div class="insight-meta"><span>منذ ${daysWord(c.span||0)}${c.first?` · أول جلسة ${esc(hijriText(c.first))}`:''}</span><span>القادمة ${esc(hijriText(c.next_hijri))}${c.time?' · '+esc(tm(c.time)):''}</span><span class="days-left ${inTable?'in-table':''}">${esc(daysLeftLabel(c.next_date))}${inTable?' · في الجدول':''}</span></div><div class="insight-timeline" aria-label="تسلسل الجلسات">${dots}</div>${reasons?`<div class="insight-reasons">${reasons}</div>`:''}</div></article>`;
+ return `<article class="insight-card ${tone}" style="--i:${i}" data-insight-case="${esc(c.case)}" data-insight-date="${esc(c.next_date||'')}" role="button" tabindex="0" title="${inTable?'عرض القضية':'لم تصل إلى جدول الجلسات بعد'}"><div class="insight-count"><b>${c.sessions}</b><small>جلسة</small></div><div class="insight-body"><div class="insight-title">${caseNumberButton(c.case)} <span>${esc(c.type||'')}</span></div><div class="insight-parties">${esc(short(c.plaintiffs||'',40))} × ${esc(short(c.defendants||'',40))}</div><div class="insight-meta"><span>منذ ${daysWord(c.span||0)}${c.first?` · أول جلسة ${esc(hijriText(c.first))}`:''}</span><span>القادمة ${esc(hijriText(c.next_hijri))}${c.time?' · '+esc(tm(c.time)):''}</span><span class="days-left ${inTable?'in-table':''}">${esc(daysLeftLabel(c.next_date))}${inTable?' · في الجدول':''}</span></div><div class="insight-timeline" aria-label="تسلسل الجلسات">${dots}</div>${reasons?`<div class="insight-reasons">${reasons}</div>`:''}</div></article>`;
 }
 let allLessons=null;
 function insightLessons(){
