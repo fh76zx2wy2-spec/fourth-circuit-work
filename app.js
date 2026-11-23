@@ -339,8 +339,8 @@ async function enableCasePush(renew=false){
   notify('تعذّر تفعيل الإشعارات على هذا الجهاز.','error');
  }
 }
-// خروج تلقائي بعد 30 دقيقة دون استخدام (مشترك بين تبويبات الجهاز نفسه). تشغيل إضافة تقاضي يُعد استخدامًا.
-const IDLE_MS=30*60*1000,IDLE_KEY='fourth-circuit-last-activity';
+// خروج تلقائي بعد ساعتين دون استخدام (مشترك بين تبويبات الجهاز نفسه). تشغيل إضافة تقاضي يُعد استخدامًا.
+const IDLE_MS=120*60*1000,IDLE_KEY='fourth-circuit-last-activity';
 let idleNotice=false,lastTouch=0;
 function touchActivity(){lastTouch=Date.now();try{localStorage.setItem(IDLE_KEY,String(lastTouch));}catch{}}
 function idleExpired(){try{const t=Number(localStorage.getItem(IDLE_KEY));return t>0&&Date.now()-t>IDLE_MS;}catch{return false;}}
@@ -348,7 +348,7 @@ for(const ev of ['pointerdown','keydown','touchstart','wheel','input'])addEventL
 setInterval(async()=>{
  if(DEMO||!state.client||!state.user||!idleExpired())return;
  try{await state.client.auth.signOut({scope:'local'});}catch{}
- notify('تم تسجيل الخروج تلقائيًا بعد 30 دقيقة دون استخدام.');
+ notify('تم تسجيل الخروج تلقائيًا بعد ساعتين دون استخدام.');
 },60000);
 async function signOutAccount(){
  await queuePushOperation(async()=>{
@@ -656,7 +656,7 @@ async function saveFollowup(form,submitter){
  notify(remove?'أُلغيت المتابعة.':'تم حفظ حالة المتابعة.','success');
  await loadAll();
 }
-// اليوم الجاري: الجلسات المنتهية تنزل تحت سطر «الجلسات السابقة لهذا اليوم»، وتظهر بالضغط عليه.
+// اليوم الجاري: الجلسات المنتهية تُطوى فوق القائمة في «الجلسات السابقة لهذا اليوم»، وتظهر بالضغط عليه.
 let pastSessionsOpen=false,pastSessionsKey='';
 const riyadhMinutes=(now=new Date())=>((now.getUTCHours()+3)%24)*60+now.getUTCMinutes();
 const minutesOf=t=>{const [h,m]=String(t||'').split(':').map(Number);return Number.isFinite(h)?h*60+(m||0):null;};
@@ -665,14 +665,32 @@ function sessionEnded(c,now=riyadhMinutes()){
  const end=minutesOf(c.session_end_time)??start+30;
  return end<=now;
 }
+function casesWord(n){return n===1?'قضية واحدة':n===2?'قضيتان':n>=3&&n<=10?`${n} قضايا`:`${n} قضية`;}
+function durationWord(m){m=Math.max(0,Math.round(m));const h=Math.floor(m/60),r=m%60;const hs=h===1?'ساعة':h===2?'ساعتين':h?`${h} ساعات`:'';const ms=r===1?'دقيقة':r===2?'دقيقتين':r?`${r} دقيقة`:'';return [hs,ms].filter(Boolean).join(' و')||'أقل من دقيقة';}
+// عدّاد تنازلي لجلسات اليوم: المتبقي، الجلسة الحالية، ووقت انتهاء آخر جلسة.
+function sessionsCountdown(list,next,now){
+ const total=list.length,remaining=next.length,done=total-remaining;
+ const ends=list.map(c=>{const st=minutesOf(c.session_time);return st===null?null:(minutesOf(c.session_end_time)??st+30);}).filter(v=>v!==null);
+ const lastEnd=ends.length?Math.max(...ends):null;
+ const current=next.find(c=>{const st=minutesOf(c.session_time);return st!==null&&st<=now;});
+ const upcoming=next.find(c=>{const st=minutesOf(c.session_time);return st!==null&&st>now;});
+ const pct=total?Math.round(done*100/total):0;
+ const big=remaining?`باقي <b>${casesWord(remaining)}</b> من ${total}`:'<b>انتهت جلسات اليوم</b>';
+ const lines=[];
+ if(current)lines.push(`الآن: القضية ${esc(latinDigits(current.case_number))} (${esc(tm(current.session_time))})`);
+ if(upcoming)lines.push(`التالية ${esc(tm(upcoming.session_time))} · بعد ${durationWord(minutesOf(upcoming.session_time)-now)}`);
+ if(remaining&&lastEnd!==null&&lastEnd>now)lines.push(`تنتهي آخر جلسة ${esc(tm(String(Math.floor(lastEnd/60)).padStart(2,'0')+':'+String(lastEnd%60).padStart(2,'0')))} · بعد ${durationWord(lastEnd-now)}`);
+ return `<div class="sessions-countdown"><div class="countdown-top"><span class="countdown-big">${big}</span><span class="countdown-pct">${done} انتهت</span></div><div class="countdown-bar"><i style="width:${pct}%"></i></div>${lines.length?`<div class="countdown-lines">${lines.map(l=>`<span>${l}</span>`).join('')}</div>`:''}</div>`;
+}
 function dayCasesList(list,empty){
  if(!list.length)return empty;
  if(state.filterDate!==todayRiyadh())return list.map(c=>caseRow(c)).join('');
  const now=riyadhMinutes(),past=list.filter(c=>sessionEnded(c,now)),next=list.filter(c=>!sessionEnded(c,now));
  pastSessionsKey=past.map(c=>c.id).join(',');
- if(!past.length)return next.map(c=>caseRow(c)).join('');
- return `${next.map(c=>caseRow(c)).join('')||'<p class="hint">انتهت جلسات اليوم.</p>'}
- <details class="past-sessions" data-past-sessions ${pastSessionsOpen?'open':''}><summary>الجلسات السابقة لهذا اليوم <span>${past.length}</span></summary>${past.map(c=>caseRow(c)).join('')}</details>`;
+ const counter=sessionsCountdown(list,next,now);
+ if(!past.length)return counter+next.map(c=>caseRow(c)).join('');
+ return `${counter}<details class="past-sessions" data-past-sessions ${pastSessionsOpen?'open':''}><summary>الجلسات السابقة لهذا اليوم <span>${past.length}</span></summary>${past.map(c=>caseRow(c)).join('')}</details>
+ ${next.map(c=>caseRow(c)).join('')||'<p class="hint">انتهت جلسات اليوم.</p>'}`;
 }
 function caseRow(c){const item=priorOutcome(c);return `<article class="case-row" data-case-session-time="${esc(c.session_time)}"><div class="case-time-slot"><div class="time-pill">${esc(tm(c.session_time))}</div><span class="current-session-label" hidden>موعدها الآن</span></div><div class="case-content"><div class="case-title">${esc(c.case_type||'قضية دون تصنيف')} <span class="badge ${esc(c.status)}">${c.status==='approved'?'✓ ':''}${statusTitle(c.status)}</span></div><div class="case-sub"><span>رقم ${caseNumberButton(c.case_number)}</span><span>${esc(short(c.plaintiffs,34))} × ${esc(short(c.defendants,34))}</span>${sessionNumberBadge(c)}${followupBadge(c)}${memoryBadge(c)}<span class="byline">أدخله: ${esc(profileName(c.created_by))}</span></div><div class="case-assignee"><span aria-hidden="true">👤</span> <span data-case-assignee="${esc(c.id)}">${esc(assigneeLabel(c))}</span></div>${item?.outcome?`<div class="case-assignee">${outcomeLabel(item)}: ${esc(item.outcome)}</div>`:''}</div><div class="case-row-actions"><button class="btn btn-small" data-detail="${esc(c.id)}">عرض</button><button class="btn btn-small btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></article>`;}
 function emptyState(){return `<div class="card empty"><span class="empty-icon">▤</span><b>لا توجد قضايا في هذا التاريخ</b><p>يمكن إضافة القضايا وتعديلها في أي وقت خلال الأيام الخمسة القادمة.</p></div>`;}
@@ -1989,7 +2007,7 @@ async function init(){if(DEMO){
   if(d){state.cases=d.cases||[];state.tasks=d.tasks||[];state.notifications=d.notifications||[];state.reportApprovals=d.reportApprovals||[];}else persistDemo();
   const chosen=localStorage.getItem('fourth-circuit-demo-profile');
   state.profile=STAFF.find(p=>p.id===chosen)||null;render();return;}
-try{const mod=window.supabase;if(!mod?.createClient)throw new Error('تعذّر تحميل مكتبة الاتصال بأمان');state.client=mod.createClient(CONFIG.supabaseUrl,CONFIG.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true}});let {data:{session},error}=await state.client.auth.getSession();if(error)throw error;if(session&&!session.user.is_anonymous&&idleExpired()){await state.client.auth.signOut({scope:'local'});session=null;idleNotice=true;}if(session)touchActivity();if(session?.user.is_anonymous)await state.client.auth.signOut({scope:'local'});state.user=session?.user.is_anonymous?null:session?.user||null;if(state.user){await loadProfile();if(state.profile?.is_active){state.booting=true;render();try{await loadAll();}finally{state.booting=false;}render();subscribeChanges();registerPushWorker();openNotificationLink();}}state.client.auth.onAuthStateChange((_ev,session)=>{if(_ev==='SIGNED_IN')touchActivity();const old=state.user?.id;state.user=session?.user.is_anonymous?null:session?.user||null;if(state.user?.id!==old){assignmentDays.clear();assignmentActor=null;resetCaseEntry();state.detailId=null;casePreparation=null;state.submission=null;state.focusedTaskId=null;if(state.sub){state.client.removeChannel(state.sub);state.sub=null;}state.profile=null;state.diwanOwnerUid=null;state.notifications=[];state.unreadCount=0;state.showReadNotices=false;state.noticeHistoryLimit=30;state.hasMoreNoticeHistory=false;state.taskFilter='mine';state.taskStatusFilter='';state.taskPersonFilter='';expandedTaskCards.clear();state.taskSearch='';state.historyDate=null;state.filterDate=displayedWorkday;lastDataSnapshot='';state.initialNotifLoad=true;render();if(state.user){setTimeout(async()=>{await refreshProfile();if(state.profile?.is_active)subscribeChanges();},10);}}});render();if(idleNotice)notify('تم تسجيل الخروج تلقائيًا بعد 30 دقيقة دون استخدام. سجّل الدخول من جديد.');}catch(e){releaseSplash();app.innerHTML=`<div class="empty" style="min-height:90vh"><b>تعذّر تشغيل الموقع</b><p>${esc(e.message)}. تحقق من بيانات الاتصال بالقاعدة والاتصال بالإنترنت.</p></div>`;}}
+try{const mod=window.supabase;if(!mod?.createClient)throw new Error('تعذّر تحميل مكتبة الاتصال بأمان');state.client=mod.createClient(CONFIG.supabaseUrl,CONFIG.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true}});let {data:{session},error}=await state.client.auth.getSession();if(error)throw error;if(session&&!session.user.is_anonymous&&idleExpired()){await state.client.auth.signOut({scope:'local'});session=null;idleNotice=true;}if(session)touchActivity();if(session?.user.is_anonymous)await state.client.auth.signOut({scope:'local'});state.user=session?.user.is_anonymous?null:session?.user||null;if(state.user){await loadProfile();if(state.profile?.is_active){state.booting=true;render();try{await loadAll();}finally{state.booting=false;}render();subscribeChanges();registerPushWorker();openNotificationLink();}}state.client.auth.onAuthStateChange((_ev,session)=>{if(_ev==='SIGNED_IN')touchActivity();const old=state.user?.id;state.user=session?.user.is_anonymous?null:session?.user||null;if(state.user?.id!==old){assignmentDays.clear();assignmentActor=null;resetCaseEntry();state.detailId=null;casePreparation=null;state.submission=null;state.focusedTaskId=null;if(state.sub){state.client.removeChannel(state.sub);state.sub=null;}state.profile=null;state.diwanOwnerUid=null;state.notifications=[];state.unreadCount=0;state.showReadNotices=false;state.noticeHistoryLimit=30;state.hasMoreNoticeHistory=false;state.taskFilter='mine';state.taskStatusFilter='';state.taskPersonFilter='';expandedTaskCards.clear();state.taskSearch='';state.historyDate=null;state.filterDate=displayedWorkday;lastDataSnapshot='';state.initialNotifLoad=true;render();if(state.user){setTimeout(async()=>{await refreshProfile();if(state.profile?.is_active)subscribeChanges();},10);}}});render();if(idleNotice)notify('تم تسجيل الخروج تلقائيًا بعد ساعتين دون استخدام. سجّل الدخول من جديد.');}catch(e){releaseSplash();app.innerHTML=`<div class="empty" style="min-height:90vh"><b>تعذّر تشغيل الموقع</b><p>${esc(e.message)}. تحقق من بيانات الاتصال بالقاعدة والاتصال بالإنترنت.</p></div>`;}}
 let backgroundRefreshRunning=false;
 async function refreshInBackground(){
  if(backgroundRefreshRunning||!state.profile?.is_active)return;

@@ -376,3 +376,13 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .memory-search summary{cursor:pointer;color:#8a6d2c;font-weight:600;width:max-content}
 .memory-search .search{margin-top:8px;width:100%}
 .memory-results{margin-top:6px}
+
+/* عدّاد جلسات اليوم */
+.sessions-countdown{margin:4px 0 14px;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#173d33,#1f5a47);color:#f3ecd9}
+.countdown-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.countdown-big{font-size:20px}.countdown-big b{color:#e7cf98;font-size:24px}
+.countdown-pct{font-size:13px;color:#cfdcd4}
+.countdown-bar{height:8px;border-radius:8px;background:rgba(255,255,255,.15);margin:10px 0 8px;overflow:hidden}
+.countdown-bar i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#c9a45c,#e7cf98);transition:width .6s}
+.countdown-lines{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13.5px;color:#dfe9e4}
+.past-sessions{margin:0 0 14px;border-top:0;padding-top:0;border-bottom:2px dashed #c9d8d2;padding-bottom:10px}
