@@ -386,3 +386,15 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .countdown-bar i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#c9a45c,#e7cf98);transition:width .6s}
 .countdown-lines{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13.5px;color:#dfe9e4}
 .past-sessions{margin:0 0 14px;border-top:0;padding-top:0;border-bottom:2px dashed #c9d8d2;padding-bottom:10px}
+
+/* شاشات الكمبيوتر الواسعة: المحتوى يأخذ عرض الشاشة، والقائمة الرئيسية أعرض، ويكبر كل شيء قليلًا في الشاشات الكبيرة جدًا. */
+@media(min-width:1400px){
+ .circuit-app .content{max-width:none}
+ .circuit-app .dashboard-columns{grid-template-columns:minmax(0,2.7fr) minmax(320px,.8fr);gap:22px}
+ .circuit-app .case-row{padding:18px 20px;grid-template-columns:84px minmax(0,1fr) auto}
+ .circuit-app .case-title{font-size:15px}
+ .circuit-app .case-sub{font-size:12px}
+}
+@media(min-width:2100px){.circuit-app .content{zoom:1.2}}
+@media(min-width:2800px){.circuit-app .content{zoom:1.45}}
+@media(min-width:3600px){.circuit-app .content{zoom:1.75}}
