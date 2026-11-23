@@ -358,3 +358,21 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .past-sessions>summary:before{content:"▸";transition:transform .2s}.past-sessions[open]>summary:before{transform:rotate(90deg)}
 .past-sessions>summary span{background:#dfe9e5;border-radius:20px;padding:0 9px;font-size:12px}
 .past-sessions[open]>.case-row{opacity:.75}
+
+/* ذاكرة القضايا (للقاضي) */
+.memory-badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:2px 9px;border-radius:999px;background:#efe6cf;color:#6b4f12;white-space:nowrap}
+.memory-badge.soft{background:#e8efe9;color:#2f5a48}
+.memory-badge.warn{background:#f6e2db;color:#9a3b22;font-weight:600}
+.memory-card{border:1px solid #e6d7b3;background:linear-gradient(160deg,#fffaf0,#fbf3e2);border-radius:14px;padding:14px 16px}
+.memory-card>small{color:#8a6d2c;font-weight:600}
+.memory-own{margin:8px 0;font-weight:600}
+.memory-warn{margin:8px 0;padding:8px 10px;border-radius:10px;background:#f6e2db;color:#8a3420;font-weight:600}
+.memory-list{list-style:none;margin:8px 0 0;padding:0}
+.memory-list li{padding:8px 0;border-top:1px dashed #e6dcc4;line-height:1.7}
+.memory-list li small{display:block;color:#6b7a72}
+.memory-frequent li{color:#5b4a26}
+.memory-red{color:#9a3b22;font-weight:600}.memory-green{color:#2f6b50}
+.memory-search{margin:10px 0 14px}
+.memory-search summary{cursor:pointer;color:#8a6d2c;font-weight:600;width:max-content}
+.memory-search .search{margin-top:8px;width:100%}
+.memory-results{margin-top:6px}
