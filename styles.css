@@ -563,3 +563,14 @@ body:has(.circuit-app){background:radial-gradient(42vw 42vw at 88% 6%,rgba(14,14
  .circuit-app .stats .stat-number{font-size:26px!important;margin:4px 0!important}
  .circuit-app .stats .stat-note{font-size:10px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
+
+/* عرض بعين الموظف */
+.view-as-bar{position:sticky;top:0;z-index:45;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 16px;
+ background:linear-gradient(90deg,rgba(138,109,44,.92),rgba(110,84,30,.92));color:#fff;font-size:13px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 6px 20px rgba(80,60,20,.25)}
+.view-as-bar .btn{background:#fff;color:#6b4f12;border:0}
+.view-as-menu{position:absolute;top:calc(100% + 6px);left:16px;z-index:60;width:min(320px,calc(100vw - 32px));padding:14px;border-radius:18px;
+ background:rgba(255,255,255,.9);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,.85);box-shadow:0 20px 50px rgba(5,50,42,.22)}
+.view-as-menu>b{font-size:14px;color:#173d33}.view-as-menu>p{font-size:12px;color:#5f7972;margin:4px 0 10px;line-height:1.7}
+.view-as-person{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:1px solid #e3ebe7;border-radius:12px;background:#fff;margin-top:6px;cursor:pointer;text-align:start;font:inherit}
+.view-as-person:hover{background:#f1f7f4}.view-as-person b{display:block;font-size:13px}.view-as-person small{color:#7c958b;font-size:11px}
+.circuit-app .topbar{position:sticky}
