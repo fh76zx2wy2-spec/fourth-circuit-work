@@ -152,6 +152,8 @@ const DEMO_CASES = [];
 const DEMO_STORE = 'fourth-circuit-demo-v3-clean';
 const app = $('#app');
 const state = {client:null,user:null,profile:null,cases:DEMO?[...DEMO_CASES]:[],tasks:DEMO?[...DEMO_TASKS]:[],reportApprovals:[],notifications:[],profiles:DEMO?STAFF:[],taskEditorId:null,taskForm:null,taskFilter:'mine',taskSearch:'',selectedPerson:null,loginSent:false,authEmail:'',screen:'dashboard',filterDate:displayedWorkday,historyDate:null,search:'',stageFilter:'all',detailId:null,editorId:null,form:null,showSource:false,showNotifs:false,authMode:'login',authBusy:false,loading:false,posterApprovedOnly:false,exporting:false,sub:null,initialNotifLoad:true,followups:new Map()};
+// أيقونات الأقسام: الرئيسية بيت، الجلسات مطرقة، المهام لوح مهام، التوزيع تقويم بساعة، الديوان صندوق أرشيف.
+const navIcons = {"home": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3.5 10.5 12 3.8l8.5 6.7\"/><path d=\"M5.5 9v10.2h13V9\"/><path d=\"M10 19.2v-5.4h4v5.4\"/></svg>", "gavel": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"9.2\" y=\"2.8\" width=\"6\" height=\"9\" rx=\"1.3\" transform=\"rotate(45 12.2 7.3)\"/><path d=\"m11 10.8-6.6 6.6\"/><path d=\"M13 20.5h8\"/><rect x=\"14\" y=\"16.8\" width=\"6\" height=\"3.7\" rx=\".9\"/></svg>", "tasks": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"5\" y=\"4.5\" width=\"14\" height=\"16\" rx=\"2.2\"/><path d=\"M9 3.5h6v2.4H9z\"/><path d=\"m8.3 11.2 1.4 1.4 2.6-2.6\"/><path d=\"M13.6 11.4h2.6\"/><path d=\"m8.3 16 1.4 1.4 2.6-2.6\"/><path d=\"M13.6 16.2h2.6\"/></svg>", "schedule": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3.5\" y=\"5\" width=\"13\" height=\"13\" rx=\"2\"/><path d=\"M3.5 9h13M7.5 3.2v3.4M12.5 3.2v3.4\"/><circle cx=\"17\" cy=\"16.5\" r=\"4\"/><path d=\"M17 14.6v2l1.3.9\"/></svg>", "archive": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3.5\" y=\"4.5\" width=\"17\" height=\"4.3\" rx=\"1.2\"/><path d=\"M5 8.8v10.7h14V8.8\"/><path d=\"M10 12.5h4\"/></svg>", "review": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 6h9M5 10h6M5 14h4\"/><circle cx=\"15.5\" cy=\"14.5\" r=\"3.5\"/><path d=\"m18 17 2.5 2.5\"/></svg>"};
 const icons = {dashboard:'⌂',cases:'▤',tasks:'☷',poster:'▧',bell:'◌',plus:'＋',refresh:'↻',check:'✓',edit:'✎',eye:'◉',close:'✕',download:'↓',logout:'↪',shield:'◇',calendar:'▦'};
 const actorId=()=>state.user?.id||state.profile?.id||'';
 const isJudge=()=>state.profile?.role==='judge';
@@ -182,9 +184,9 @@ function bootSkeleton(){return `<div class="boot-skeleton" aria-busy="true" aria
 function shell(){
  const n=state.unreadCount??0;
  // «مراجعة جلسات اليوم» للموظفين فقط؛ لا تظهر للقاضي.
- const nav=[['dashboard','الرئيسية',icons.dashboard],['cases','الجلسات',icons.cases],...(isJudge()?[]:[['review','مراجعة جلسات اليوم',icons.check]]),['tasks','المهام والمتابعة',icons.tasks],['hearings','توزيع الجلسات',icons.calendar]];
+ const nav=[['dashboard','الرئيسية',navIcons.home],['cases','الجلسات',navIcons.gavel],...(isJudge()?[]:[['review','مراجعة جلسات اليوم',navIcons.review]]),['tasks','المهام والمتابعة',navIcons.tasks],['hearings','توزيع الجلسات',navIcons.schedule]];
  const diwanAccess=canShowDiwan(state);
- if(diwanAccess)nav.push(['diwan','ديوان القضايا',icons.cases]);
+ if(diwanAccess)nav.push(['diwan','ديوان القضايا',navIcons.archive]);
  const inDiwan=state.screen==='diwan'&&diwanAccess;
  const currentSection=state.screen==='poster'?'cases':state.screen;
  const navCurrent=key=>currentSection===key?' aria-current="page"':'';

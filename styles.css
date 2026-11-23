@@ -543,3 +543,6 @@ body:has(.circuit-app){background:radial-gradient(42vw 42vw at 88% 6%,rgba(14,14
  .circuit-app .topbar,.circuit-app .modal,.circuit-app .card,.circuit-app .case-row,.circuit-app .stat{background-color:#fff!important;-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 }
+.tile-symbol svg{width:30px;height:30px;display:block}
+.nav-icon svg{width:19px;height:19px;display:block}
+@media(max-width:760px){.tile-symbol svg{width:22px;height:22px}.nav-icon svg{width:22px;height:22px}}
