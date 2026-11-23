@@ -1254,9 +1254,9 @@ async function loadMemoryFlags(){
 }
 function memoryBadge(c){
  if(!isJudge())return '';const f=memoryFlags.get(c.case_number);if(!f)return '';
- if(f.same_parties)return '<span class="memory-badge warn" title="بين أطراف هذه القضية قضية سابقة بنفس الأطراف">⚠ نفس الأطراف سبقت</span>';
- if(f.judged)return '<span class="memory-badge" title="صدر في هذه القضية حكم من الدائرة">⚖ صدر فيها حكم</span>';
- if(f.related)return `<span class="memory-badge soft" title="أحد الأطراف له قضايا أخرى عندك">↺ طرف له ${f.related===1?'قضية أخرى':f.related===2?'قضيتان أخريان':f.related+' قضايا أخرى'}</span>`;
+ if(f.same_parties)return '<span class="memory-badge warn" title="لدى الدائرة قضية أخرى برقم مختلف بين الأطراف أنفسهم">⚠ للأطراف أنفسهم قضية أخرى</span>';
+ if(f.judged)return '<span class="memory-badge" title="أصدرت الدائرة حكمًا سابقًا في هذه القضية نفسها">⚖ صدر فيها حكم سابق</span>';
+ if(f.related)return `<span class="memory-badge soft" title="لأحد أطراف هذه القضية قضايا أخرى لدى الدائرة">↺ لأحد الأطراف ${f.related===1?'قضية أخرى':f.related===2?'قضيتان أخريان':f.related+' قضايا أخرى'}</span>`;
  return '';
 }
 async function loadCaseMemory(caseNumber){
@@ -1272,7 +1272,7 @@ function memoryCaseLine(r){
  const parts=(r.parties||[]).map(p=>p.label?esc(p.label):`هوية ${esc(p.id||'')}`).join('، ');
  const ruling=r.ruling?`${esc(RULING_LABEL[r.ruling]||r.ruling)}${r.deed?' · '+hijriDeed(r.deed):''}`:(r.open?'منظورة الآن':'لم يُحكم فيها بعد');
  const appeal=r.appeal?` · <span class="${['نقض','إعادة','جزئي'].includes(r.appeal)?'memory-red':'memory-green'}">${esc(APPEAL_LABEL[r.appeal]||r.appeal)} استئنافًا</span>`:'';
- return `<li><b>${caseNumberButton(r.case)}</b>${r.shared>=2?' <span class="memory-badge warn">نفس الأطراف</span>':''} — ${ruling}${appeal}${r.category?` · ${esc(r.category)}`:''}<small>المشترك: ${parts||'—'}</small></li>`;
+ return `<li><b>${caseNumberButton(r.case)}</b>${r.shared>=2?' <span class="memory-badge warn">الأطراف أنفسهم</span>':''} — ${ruling}${appeal}${r.category?` · ${esc(r.category)}`:''}<small>الطرف المشترك: ${parts||'—'}</small></li>`;
 }
 function memoryPanel(c){
  if(!isJudge()||!c)return '';
@@ -1280,9 +1280,9 @@ function memoryPanel(c){
  if(!m)return '<div id="case-memory" hidden></div>';
  const own=m.own||[],related=m.related||[],frequent=m.frequent||[];
  if(!own.length&&!related.length&&!frequent.length)return '<div id="case-memory" hidden></div>';
- const ownLine=own.length?`<p class="memory-own">⚖ صدر في هذه القضية: ${own.map(j=>`${j.kind==='appeal'?`استئناف (${esc(APPEAL_LABEL[j.ruling]||j.ruling)})`:esc(RULING_LABEL[j.ruling]||j.ruling)} · ${hijriDeed(j.deed)} · صك ${esc(latinDigits(j.number))}`).join(' ← ')}</p>`:'';
+ const ownLine=own.length?`<p class="memory-own">⚖ سبق أن أصدرت الدائرة في هذه القضية نفسها: ${own.map(j=>`${j.kind==='appeal'?`استئناف (${esc(APPEAL_LABEL[j.ruling]||j.ruling)})`:esc(RULING_LABEL[j.ruling]||j.ruling)} · ${hijriDeed(j.deed)} · صك ${esc(latinDigits(j.number))}`).join(' ← ')}</p>`:'';
  const same=related.filter(r=>r.shared>=2);
- const warn=same.length?`<p class="memory-warn">⚠ ${same.length===1?'قضية سابقة':same.length+' قضايا سابقة'} بنفس الأطراف. تحقّق من سبق الفصل أو الارتباط.</p>`:'';
+ const warn=same.length?`<p class="memory-warn">⚠ لدى الدائرة ${same.length===1?'قضية أخرى':same.length+' قضايا أخرى'} برقم مختلف بين الأطراف أنفسهم، فيحسن التحقق من سبق الفصل في الموضوع أو الارتباط بين الدعويين.</p>`:'';
  const freq=frequent.map(f=>`<li><b>${esc(f.label||('هوية '+f.id))}</b> كثير التقاضي عندك: ${f.cases} قضية أخرى${f.judged?` · حُكم في ${f.judged}: إلزام ${f.obliged}، رد ${f.dismissed}`:''}</li>`).join('');
  return `<div id="case-memory" class="detail-field detail-wide memory-card"><small>ذاكرة القضايا · لا يراها غيرك</small>${ownLine}${warn}${related.length?`<ul class="memory-list">${related.map(memoryCaseLine).join('')}</ul>`:''}${freq?`<ul class="memory-list memory-frequent">${freq}</ul>`:''}</div>`;
 }
