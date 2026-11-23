@@ -171,13 +171,14 @@ function caseStageTitle(c){
 const listForDate=()=>state.cases.filter(c=>c.session_date===state.filterDate).sort((a,b)=>String(a.session_time).localeCompare(String(b.session_time)));
 const filteredCases=()=>listForDate().filter(c=>(state.stageFilter==='all'||c.status===state.stageFilter)&&[c.case_number,c.plaintiffs,c.defendants,c.case_type,c.claim_summary].some(v=>latinDigits(v).includes(state.search)));
 const profileName=(id)=>state.profiles.find(p=>p.id===id)?.display_name||'الاسم غير متاح';
-function navigate(screen,taskId=null){if(screen==='diwan'&&!canShowDiwan(state))return;if(screen==='review')loadReview();state.screen=screen;state.focusedTaskId=taskId;if(screen!=='submission')state.submission=null;state.showNotifs=false;render();window.scrollTo({top:0,behavior:'smooth'});}
+function navigate(screen,taskId=null){if(screen==='diwan'&&!canShowDiwan(state))return;if(screen==='review'&&isJudge())screen='dashboard';if(screen==='review')loadReview();state.screen=screen;state.focusedTaskId=taskId;if(screen!=='submission')state.submission=null;state.showNotifs=false;render();window.scrollTo({top:0,behavior:'smooth'});}
 const organizerPasskeyButton='<button type="button" class="icon-button" aria-label="مفتاح مرور المنظّم" title="مفتاح مرور المنظّم" data-action="organizer-passkey-settings">🔑</button>';
 let shellEntered=false,dataRevealed=false;
 function bootSkeleton(){return `<div class="boot-skeleton" aria-busy="true" aria-label="جارٍ تحميل البيانات">${'<div class="sk-card"><span></span><span></span><span></span></div>'.repeat(4)}</div>`;}
 function shell(){
  const n=state.unreadCount??0;
- const nav=[['dashboard','الرئيسية',icons.dashboard],['cases','الجلسات',icons.cases],['review','مراجعة جلسات اليوم',icons.check],['tasks','المهام والمتابعة',icons.tasks],['hearings','توزيع الجلسات',icons.calendar]];
+ // «مراجعة جلسات اليوم» للموظفين فقط؛ لا تظهر للقاضي.
+ const nav=[['dashboard','الرئيسية',icons.dashboard],['cases','الجلسات',icons.cases],...(isJudge()?[]:[['review','مراجعة جلسات اليوم',icons.check]]),['tasks','المهام والمتابعة',icons.tasks],['hearings','توزيع الجلسات',icons.calendar]];
  const diwanAccess=canShowDiwan(state);
  if(diwanAccess)nav.push(['diwan','ديوان القضايا',icons.cases]);
  const inDiwan=state.screen==='diwan'&&diwanAccess;
