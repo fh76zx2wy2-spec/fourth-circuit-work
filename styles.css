@@ -546,3 +546,20 @@ body:has(.circuit-app){background:radial-gradient(42vw 42vw at 88% 6%,rgba(14,14
 .tile-symbol svg{width:30px;height:30px;display:block}
 .nav-icon svg{width:19px;height:19px;display:block}
 @media(max-width:760px){.tile-symbol svg{width:22px;height:22px}.nav-icon svg{width:22px;height:22px}}
+
+/* سطر واحد للعناوين والأرقام */
+.title-short{display:none}
+.circuit-app .topbar-title,.circuit-app .topbar-date{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:760px){
+ .title-full{display:none}.title-short{display:inline}
+ .date-greg{display:none}
+ .circuit-app .topbar-title{font-size:16px}
+ .circuit-app .topbar-date{font-size:11px}
+ .circuit-app .topbar-heading{min-width:0;flex:1}
+ .circuit-app .stats{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}
+ .circuit-app .stats .stat{padding:12px 10px!important;min-height:0!important}
+ .circuit-app .stats .stat-icon{display:none!important}
+ .circuit-app .stats .stat-label{font-size:11.5px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .circuit-app .stats .stat-number{font-size:26px!important;margin:4px 0!important}
+ .circuit-app .stats .stat-note{font-size:10px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
