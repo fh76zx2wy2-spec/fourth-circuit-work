@@ -687,6 +687,12 @@ function insightCard(c,i){
  const dots=(c.timeline||[]).map(t=>`<i class="dot ${REASON_TONE[t.reason]||'other'}" title="${esc(hijriText(t.hijri))} · ${esc(t.reason)}"></i>`).join('');
  return `<article class="insight-card ${tone}" style="--i:${i}"><div class="insight-count"><b>${c.sessions}</b><small>جلسة</small></div><div class="insight-body"><div class="insight-title">${caseNumberButton(c.case)} <span>${esc(c.type||'')}</span></div><div class="insight-parties">${esc(short(c.plaintiffs||'',40))} × ${esc(short(c.defendants||'',40))}</div><div class="insight-meta"><span>منذ ${daysWord(c.span||0)}${c.first?` · أول جلسة ${esc(hijriText(c.first))}`:''}</span><span>القادمة ${esc(hijriText(c.next_hijri))}${c.time?' · '+esc(tm(c.time)):''}</span></div><div class="insight-timeline" aria-label="تسلسل الجلسات">${dots}</div>${reasons?`<div class="insight-reasons">${reasons}</div>`:''}</div></article>`;
 }
+let allLessons=null;
+function insightLessons(){
+ if(allLessons===null){allLessons=[];state.client?.rpc('appeal_lessons').then(({data})=>{allLessons=data||[];if(state.screen==='cases'&&state.casesView==='insight')render();});return '';}
+ if(!allLessons.length)return '';
+ return `<section class="insight-section"><h3>دروس النقض <small>أسباب نقض أحكام الدائرة في الاستئناف · تتحدّث مع كل صك جديد</small></h3><ul class="memory-list lessons-all">${allLessons.map(l=>`${lessonItem(l)}`).join('')}</ul></section>`;
+}
 function insightPage(){
  if(!caseInsight){void loadCaseInsight();return '<div class="card empty"><span class="empty-icon load-spin">◌</span><b>جارٍ تحميل مؤشر القضايا…</b></div>';}
  if(caseInsight.error)return `<div class="card empty"><b>تعذّر تحميل المؤشر</b><p>${esc(caseInsight.error)}</p></div>`;
@@ -702,6 +708,7 @@ function insightPage(){
  <div class="insight-hero"><div><span class="hero-kicker">مسح الجلسات القادمة${meta.horizon?` · ${esc(meta.horizon)} يومًا`:''}</span><h2>${cases.length?`في الجلسات القادمة ${casesWord(cases.length)}، منها <b>${long.length}</b> مطوّلة و<b>${study.length}</b> مرفوعة للدراسة.`:'لا توجد قضايا قادمة في آخر مسح.'}</h2><p>${running?'المسح جارٍ الآن، وتظهر النتائج تباعًا.':`آخر مسح: ${esc(when)}`} · <button class="text-button" data-action="reload-insight">تحديث</button></p></div>
  <div class="insight-kpis"><div><b>${long.length}</b><span>مطوّلة<small>5 جلسات فأكثر</small></span></div><div><b>${study.length}</b><span>مرفوعة للدراسة</span></div><div><b>${avg}</b><span>متوسط الجلسات</span></div></div></div>
  ${study.length?`<section class="insight-section"><h3>المرفوعة للدراسة <small>مرتبة بموعد الجلسة</small></h3><ul class="study-list">${studyRows}</ul></section>`:''}
+ ${insightLessons()}
  <section class="insight-section"><h3>القضايا المطوّلة <small>الأكثر جلسات أولًا · الأحمر 7 فأكثر</small></h3>${long.length?`<div class="insight-grid">${long.map(insightCard).join('')}</div>`:'<p class="hint">لا توجد قضية بلغت خمس جلسات.</p>'}
  <div class="insight-legend">${Object.entries(REASON_TONE).filter(([r])=>r!=='أخرى').map(([r,t])=>`<span><i class="dot ${t}"></i>${esc(r)}</span>`).join('')}</div></section>
  </div>`;
@@ -1324,9 +1331,10 @@ async function loadCaseMemory(caseNumber){
  caseMemory=null;
  if(!isJudge()||!caseNumber||!state.client)return;
  const current={caseNumber,data:null};caseMemory=current;
- const {data,error}=await state.client.rpc('case_memory',{p_case:caseNumber});
+ const [mem,les]=await Promise.all([state.client.rpc('case_memory',{p_case:caseNumber}),state.client.rpc('case_lessons',{p_case:caseNumber})]);
  if(caseMemory!==current)return;
- current.data=error?null:data;
+ current.data=mem.error?null:mem.data;
+ current.lessons=les.error?null:les.data;
  const panel=$('#case-memory');if(panel)panel.outerHTML=memoryPanel(state.cases.find(x=>x.id===state.detailId));
 }
 function memoryCaseLine(r){
@@ -1339,13 +1347,21 @@ function memoryPanel(c){
  if(!isJudge()||!c)return '';
  const m=caseMemory?.caseNumber===c.case_number?caseMemory.data:null;
  if(!m)return '<div id="case-memory" hidden></div>';
- const own=m.own||[],related=m.related||[],frequent=m.frequent||[];
- if(!own.length&&!related.length&&!frequent.length)return '<div id="case-memory" hidden></div>';
+ const own=m.own||[],related=m.related||[],frequent=m.frequent||[],lessons=caseMemory.lessons?.lessons||[];
+ if(!own.length&&!related.length&&!frequent.length&&!lessons.length)return '<div id="case-memory" hidden></div>';
  const ownLine=own.length?`<p class="memory-own">⚖ سبق أن أصدرت الدائرة في هذه القضية نفسها: ${own.map(j=>`${j.kind==='appeal'?`استئناف (${esc(APPEAL_LABEL[j.ruling]||j.ruling)})`:esc(RULING_LABEL[j.ruling]||j.ruling)} · ${hijriDeed(j.deed)} · صك ${esc(latinDigits(j.number))}`).join(' ← ')}</p>`:'';
  const same=related.filter(r=>r.shared>=2);
  const warn=same.length?`<p class="memory-warn">⚠ لدى الدائرة ${same.length===1?'قضية أخرى':same.length+' قضايا أخرى'} برقم مختلف بين الأطراف أنفسهم، فيحسن التحقق من سبق الفصل في الموضوع أو الارتباط بين الدعويين.</p>`:'';
  const freq=frequent.map(f=>`<li><b>${esc(f.label||('هوية '+f.id))}</b> كثير التقاضي عندك: ${f.cases} قضية أخرى${f.judged?` · حُكم في ${f.judged}: إلزام ${f.obliged}، رد ${f.dismissed}`:''}</li>`).join('');
- return `<div id="case-memory" class="detail-field detail-wide memory-card"><small>ذاكرة القضايا · لا يراها غيرك</small>${ownLine}${warn}${related.length?`<ul class="memory-list">${related.map(memoryCaseLine).join('')}</ul>`:''}${freq?`<ul class="memory-list memory-frequent">${freq}</ul>`:''}</div>`;
+ return `<div id="case-memory" class="detail-field detail-wide memory-card"><small>ذاكرة القضايا · لا يراها غيرك</small>${ownLine}${warn}${related.length?`<ul class="memory-list">${related.map(memoryCaseLine).join('')}</ul>`:''}${freq?`<ul class="memory-list memory-frequent">${freq}</ul>`:''}${lessons.length?lessonsBlock(lessons,caseMemory.lessons.category):''}</div>`;
+}
+// دروس النقض في تصنيف القضية: السبب الذي نُقض به حكم سابق للدائرة في قضية مماثلة.
+function lessonItem(l,withCase=true){
+ const kind=l.outcome==='جزئي'?'نُقض جزئيًا':l.outcome==='إعادة'?'نُقض وأُعيد':'نُقض';
+ return `<li class="lesson"><div class="lesson-head"><span class="lesson-kind">${kind}</span>${(l.tags||[]).map(t=>`<span class="lesson-tag">${esc(t)}</span>`).join('')}${withCase?`<small>${caseNumberButton(l.case)} · ${hijriDeed(l.deed)}</small>`:''}</div>${l.principle?`<p class="lesson-principle">${esc(l.principle)}</p>`:''}${l.summary?`<details><summary>تفاصيل القضية</summary><p>${esc(l.summary)}</p></details>`:(l.principle?'':'<p class="hint">صك نقض جديد، ولم يُلخَّص سببه بعد.</p>')}</li>`;
+}
+function lessonsBlock(lessons,category){
+ return `<div class="lessons"><b class="lessons-title">⚖ دروس النقض في «${esc(category)}»</b><ul class="memory-list">${lessons.slice(0,3).map(l=>lessonItem(l)).join('')}</ul></div>`;
 }
 function memorySearchBox(){
  if(!isJudge())return '';
@@ -1776,6 +1792,17 @@ window.taqadiBridge={
   const {data,error}=await state.client.rpc('judge_scan_import',{p_cases:rows,p_meta:meta||null});
   if(!error)caseInsight=null;
   return error?{error:error.message}:{saved:data};
+ },
+ // أحكام الاستئناف الجديدة من «مساعد تقاضي»: تُضاف إلى ذاكرة القضايا، والمنقوض منها إلى دروس النقض.
+ async archiveSync(rows,lessons){
+  if(!state.client||!state.user)return {error:'غير مسجل الدخول في المنظم'};
+  if(!isJudge())return {error:'لحساب القاضي فقط'};
+  const a=rows?.length?await state.client.rpc('upsert_judge_archive',{rows}):{data:0};
+  if(a.error)return {error:a.error.message};
+  const l=lessons?.length?await state.client.rpc('upsert_appeal_lessons',{rows:lessons}):{data:0};
+  if(l.error)return {error:l.error.message};
+  allLessons=null;memoryFlagsKey='';
+  return {archive:a.data,lessons:l.data};
  },
  async importHistory(items){
   if(!state.client||!state.user)return {error:'غير مسجل الدخول في المنظم'};
