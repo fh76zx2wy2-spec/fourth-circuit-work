@@ -464,3 +464,6 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .lessons>summary{cursor:pointer;list-style:none;font-weight:700}
 .lessons>summary::-webkit-details-marker{display:none}
 .lessons>summary span{font-size:11px;padding:1px 8px;border-radius:20px;background:#f6e2db;color:#9a3b22;margin-inline-start:4px}
+.insight-card,.study-list li{cursor:pointer;transition:box-shadow .15s,transform .15s}
+.insight-card:hover,.study-list li:hover{box-shadow:0 6px 18px #0d756814;transform:translateY(-1px)}
+.days-left{font-weight:700;color:#8a6d2c}.days-left.in-table{color:#1f6b4f}
