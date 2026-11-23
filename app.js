@@ -1783,6 +1783,17 @@ window.taqadiBridge={
   const hj=d=>{const p=hijriParts(d);return p?`${String(p.day).padStart(2,'0')}/${String(p.month).padStart(2,'0')}/${p.year}`:'';};
   return list.map(c=>{const prev=c.previous_date?hj(c.previous_date):'';return {case_number:c.case_number,stage:c.stage,previous_hijri:prev,history_ready:!!prev&&have.has(c.case_number+'|'+prev)};});
  },
+ // نتائج مسح القضايا القادمة (للقاضي): تُستعمل لإدخال الأيام البعيدة دون الرجوع إلى تقاضي.
+ async scanCache(){
+  if(!state.client||!state.user||!isJudge())return null;
+  touchActivity();
+  const today=todayRiyadh();
+  const [c,m]=await Promise.all([
+   state.client.from('judge_scan_cases').select('case_number,next_date,next_hijri,next_time,end_time,case_type,plaintiffs,defendants,claim,sessions,scanned_at').gte('next_date',today),
+   state.client.from('judge_scan_meta').select('*').eq('id',1).maybeSingle()]);
+  if(c.error)return {error:c.error.message};
+  return {meta:m.data||null,cases:c.data||[]};
+ },
  // مسح القضايا القادمة (للقاضي): يحفظ قائمة الجلسات القادمة وسجل كل قضية في مؤشر القضايا.
  async judgeScan(items,meta){
   if(!state.client||!state.user)return {error:'غير مسجل الدخول في المنظم'};
