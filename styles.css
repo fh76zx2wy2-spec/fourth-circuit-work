@@ -574,3 +574,6 @@ body:has(.circuit-app){background:radial-gradient(42vw 42vw at 88% 6%,rgba(14,14
 .view-as-person{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:1px solid #e3ebe7;border-radius:12px;background:#fff;margin-top:6px;cursor:pointer;text-align:start;font:inherit}
 .view-as-person:hover{background:#f1f7f4}.view-as-person b{display:block;font-size:13px}.view-as-person small{color:#7c958b;font-size:11px}
 .circuit-app .topbar{position:sticky}
+.title-place{font-size:13px;font-weight:500;color:#5f7972;margin-inline-start:8px}
+.circuit-app .brand b{font-size:22px;letter-spacing:.5px}
+.circuit-app .brand small{white-space:nowrap;font-size:10.5px}

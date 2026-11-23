@@ -1,4 +1,4 @@
-const revision = '7';
+const revision = '8';
 const diagnosticsCache = 'fourth-circuit-push-diagnostics';
 const diagnosticsUrl = new URL('last-receipt.json', self.registration.scope).href;
 const validId = id => typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id);
@@ -36,7 +36,7 @@ async function showPush(event) {
 
   try {
     const rich = task && typeof richTitle === 'string' && richTitle.trim();
-    await self.registration.showNotification(rich ? richTitle.slice(0, 80) : 'منظم أعمال الدائرة الرابعة', {
+    await self.registration.showNotification(rich ? richTitle.slice(0, 80) : 'المُــنـظِّـم', {
       body: test ? 'إشعار تجريبي — إشعارات الدائرة الرابعة تعمل بنجاح' : rich ? String(richBody || '').slice(0, 300) : task ? taskMessage : 'لديك إشعار جديد. افتح الموقع للاطلاع عليه.',
       lang: 'ar', dir: 'rtl',
       tag: test ? 'push-test-' + testId : task ? 'task-' + (validId(eventId) ? eventId : taskId) : validId(id) ? 'case-submission-' + id : undefined,
