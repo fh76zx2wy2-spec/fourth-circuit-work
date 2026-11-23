@@ -30,12 +30,16 @@ function normalizeNumberInput(input){
  input.value=value;
  if(selectionStart!==null)input.setSelectionRange(selectionStart,selectionEnd,selectionDirection);
 }
+// رقم القضية وحده (أرقام فقط)، ولو جاء مع نص مثل «بيانات القضية 4671363640».
+function caseDigits(value){const v=latinDigits(String(value??''));const m=v.match(/\d{9,10}/);return m?m[0]:v.replace(/\D/g,'')||v.trim();}
 function caseNumberButton(value){
- return `<button type="button" class="copy-case-number" data-copy-case-number="${esc(value)}" title="نسخ رقم القضية" aria-label="نسخ رقم القضية ${esc(value)}"><bdi>${esc(value)}</bdi></button>`;
+ const n=caseDigits(value);
+ return `<button type="button" class="copy-case-number" data-copy-case-number="${esc(n)}" title="نسخ رقم القضية" aria-label="نسخ رقم القضية ${esc(n)}"><bdi>${esc(n)}</bdi></button>`;
 }
 const copyCaseFieldButton='<button type="button" class="copy-case-number" data-copy-case-field aria-label="نسخ رقم القضية" title="نسخ رقم القضية">نسخ</button>';
 async function copyCaseNumber(button){
- const value=latinDigits(button.dataset.copyCaseNumber??button.parentElement.querySelector('input')?.value).trim();
+ const raw=button.dataset.copyCaseNumber??button.parentElement.querySelector('input')?.value;
+ const value=caseDigits(raw);
  if(!value)return;
  try{
   await navigator.clipboard.writeText(value);
