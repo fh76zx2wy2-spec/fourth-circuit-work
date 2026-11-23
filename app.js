@@ -4,7 +4,6 @@ import {canShowDiwan, loadDiwanAccess, mountDiwan} from './diwan-panel.js?v=5.0.
 const CONFIG = window.APP_CONFIG || {};
 const DEMO = !CONFIG.supabaseUrl || !CONFIG.supabasePublishableKey;
 const APP_NAME = 'المُــنـظِّـم';
-const APP_PLACE = 'الدائرة الرابعة · محكمة أبي عريش';
 const KSA = 'Asia/Riyadh';
 const clockFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: KSA, hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
@@ -198,7 +197,7 @@ function shell(){
  const taskCount=state.tasks.filter(t=>myAssignment(t)&&!myAssignment(t).executed_at).length;
  const enter=!shellEntered;shellEntered=true;const reveal=!state.booting&&!dataRevealed;if(reveal)dataRevealed=true;
  return `<div class="app circuit-app${enter?' app-enter':''}${reveal?' data-reveal':''}"><aside class="sidebar">
-   <div class="brand"><div class="brand-symbol" aria-hidden="true">▦</div><div><b>${APP_NAME}</b><small>${APP_PLACE}</small></div></div>
+   <div class="brand"><div class="brand-symbol" aria-hidden="true">▦</div><div><b>${APP_NAME}</b></div></div>
    <div class="sidebar-caption">القائمة الرئيسية</div><nav class="nav" aria-label="القائمة الرئيسية">${nav.map(([key,label,icon])=>`<button data-nav="${key}"${navCurrent(key)} class="${currentSection===key?'active':''}"><span class="nav-icon" aria-hidden="true">${icon}</span><span>${label}</span>${key==='tasks'&&taskCount?`<span class="nav-count" aria-hidden="true">${taskCount}</span>`:''}</button>`).join('')}</nav>
    <div class="sidebar-bottom"><div class="profile-mini"><span class="avatar">${esc(((state.viewAs||state.profile)?.display_name||'ت')[0])}</span><div><b>${esc((state.viewAs||state.profile)?.display_name||'النسخة التجريبية')}</b><small>${roleTitle((state.viewAs||state.profile)?.role)}</small></div></div><button class="side-switch" data-action="logout">↩ ${DEMO?'تبديل المستخدم':'تسجيل الخروج'}</button></div>
   </aside><main class="main"><header class="topbar ministry-top"><div class="topbar-heading"><div class="topbar-title"><span class="title-full">${APP_NAME}</span><span class="title-short">${APP_NAME}</span></div><div class="topbar-date">${hijri(todayRiyadh())} <span class="date-greg"><span>·</span> ${gregorian(todayRiyadh())}</span> <span>·</span> <time class="topbar-clock" data-riyadh-clock dir="ltr" title="توقيت الرياض">${riyadhClock()}</time></div></div><div class="toolbar">${realJudge()&&!state.viewAs?`<button class="icon-button" data-action="view-as-menu" title="عرض بعين الموظف" aria-label="عرض بعين الموظف">👁</button>`:''}${state.organizerPasskeyOwnerUid===state.user?.id&&state.user?.id?organizerPasskeyButton:''}<span class="header-profile">${esc((state.viewAs||state.profile)?.display_name||'')}</span><button class="icon-button mobile-logout" data-action="logout" title="${DEMO?'تبديل الاسم':'تسجيل خروج'}">⇄</button><button class="icon-button" data-action="refresh" title="تحديث البيانات">↻</button><button class="icon-button notification-bell" data-action="toggle-notifs" title="الإشعارات">◌ ${n?`<span class="notif-count">${n}</span>`:''}</button></div>${state.showNotifs?renderNotifPopup():''}${state.viewAsMenu?viewAsMenu():''}</header>${viewAsBar()}
