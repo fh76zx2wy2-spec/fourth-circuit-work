@@ -467,3 +467,68 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .insight-card,.study-list li{cursor:pointer;transition:box-shadow .15s,transform .15s}
 .insight-card:hover,.study-list li:hover{box-shadow:0 6px 18px #0d756814;transform:translateY(-1px)}
 .days-left{font-weight:700;color:#8a6d2c}.days-left.in-table{color:#1f6b4f}
+
+/* ================= الزجاج السائل (Liquid Glass) =================
+   طبقة تصميم واحدة فوق التصميم الأصلي؛ حذف هذا القسم يعيد الشكل السابق كما كان.
+   الزجاج على الإطارات (الشريط العلوي، التنقل، النوافذ، المفاتيح)، والنصوص الطويلة على سطح شبه مصمت للوضوح. */
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+.circuit-app{--glass:rgba(255,255,255,.58);--glass-strong:rgba(255,255,255,.8);--glass-edge:rgba(255,255,255,.7);
+ --glass-shadow:0 10px 34px rgba(9,70,58,.10),0 2px 6px rgba(9,70,58,.06);--glass-hi:inset 0 1px 0 rgba(255,255,255,.85),inset 0 -1px 0 rgba(255,255,255,.25);
+ --blur:blur(22px) saturate(185%)}
+body:has(.circuit-app){background:radial-gradient(42vw 42vw at 88% 6%,rgba(14,148,123,.18),transparent 62%),radial-gradient(38vw 38vw at 8% 30%,rgba(216,181,82,.18),transparent 60%),
+ radial-gradient(46vw 46vw at 60% 96%,rgba(8,121,103,.12),transparent 62%),linear-gradient(180deg,#f4f8f6,#ecf2ef);background-attachment:fixed}
+.circuit-app,.circuit-app .main,.circuit-app .content{background:transparent}
+/* الشريط العلوي: زجاج ثابت أعلى الصفحة */
+.circuit-app .topbar{position:sticky;top:0;z-index:40;background-color:var(--glass);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+ border-bottom:1px solid var(--glass-edge);box-shadow:0 1px 0 rgba(9,70,58,.06),var(--glass-hi)}
+/* التنقل الجانبي على الكمبيوتر: زجاج أخضر */
+.circuit-app .sidebar{background:linear-gradient(165deg,rgba(9,128,108,.86),rgba(7,92,77,.9));-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+ border-left:1px solid rgba(255,255,255,.18);box-shadow:-10px 0 40px rgba(5,77,68,.18),inset 1px 0 0 rgba(255,255,255,.12)}
+.circuit-app .nav button{transition:background .25s,transform .25s cubic-bezier(.2,.9,.3,1.3)}
+.circuit-app .nav button.active{background:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 4px 14px rgba(0,0,0,.08)}
+.circuit-app .nav button:active{transform:scale(.96)}
+/* البطاقات: سطح شبه مصمت مع حافة ضوئية */
+.circuit-app .card,.circuit-app .stat,.circuit-app .case-row,.circuit-app .task-row,.circuit-app .insight-section,.circuit-app .day-summary,.circuit-app .memory-card{
+ background-color:rgba(255,255,255,.86);-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);
+ border-color:rgba(255,255,255,.75)!important;box-shadow:var(--glass-shadow),var(--glass-hi)}
+.circuit-app .case-row{transition:transform .2s,box-shadow .2s}
+.circuit-app .case-row:hover{transform:translateY(-1px);box-shadow:0 14px 38px rgba(9,70,58,.13),var(--glass-hi)}
+/* المفاتيح والأزرار الصغيرة: كبسولات زجاجية */
+.circuit-app .icon-button,.view-switch,.circuit-app .workday-tab,.circuit-app .seg{background:var(--glass)!important;-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+ border:1px solid var(--glass-edge)!important;box-shadow:0 4px 14px rgba(9,70,58,.08),var(--glass-hi)}
+.view-switch{border-radius:16px}
+.view-switch button[aria-selected="true"]{background:rgba(255,255,255,.9);box-shadow:0 4px 14px rgba(9,70,58,.12),inset 0 1px 0 #fff}
+.circuit-app .workday-tab.active{background:linear-gradient(160deg,rgba(14,148,123,.92),rgba(8,110,92,.92))!important;border-color:rgba(255,255,255,.3)!important;
+ box-shadow:0 8px 22px rgba(8,110,92,.28),inset 0 1px 0 rgba(255,255,255,.35)}
+.circuit-app .btn,.circuit-app button.primary{position:relative;overflow:hidden}
+.circuit-app .btn::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 55%)}
+/* أزرار الأقسام والبانر: لمعة زجاجية */
+.circuit-app .service-tile,.circuit-app .welcome-banner,.circuit-app .poster-banner{position:relative;overflow:hidden;box-shadow:0 12px 30px rgba(5,77,68,.18),inset 0 1px 0 rgba(255,255,255,.25)}
+.circuit-app .service-tile::after,.circuit-app .welcome-banner::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+ background:linear-gradient(160deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,.04) 42%,rgba(255,255,255,0) 60%)}
+.circuit-app .service-tile{transition:transform .25s cubic-bezier(.2,.9,.3,1.3),box-shadow .25s}
+.circuit-app .service-tile:hover{transform:translateY(-2px);box-shadow:0 18px 40px rgba(5,77,68,.24),inset 0 1px 0 rgba(255,255,255,.3)}
+/* النوافذ المنبثقة */
+.circuit-app .modal-backdrop{background:rgba(10,40,34,.22);-webkit-backdrop-filter:blur(10px) saturate(140%);backdrop-filter:blur(10px) saturate(140%)}
+.circuit-app .modal{background:rgba(255,255,255,.88);-webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);
+ border:1px solid rgba(255,255,255,.8);box-shadow:0 30px 80px rgba(5,50,42,.25),var(--glass-hi);border-radius:22px}
+.circuit-app .modal-head,.circuit-app .modal-foot{background:rgba(247,250,249,.62);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur)}
+.circuit-app .modal-body{background:rgba(255,255,255,.55)}
+/* اللوحات الداكنة: لمعة زجاج */
+.sessions-countdown,.insight-hero{position:relative;overflow:hidden;box-shadow:0 18px 44px rgba(5,50,42,.25),inset 0 1px 0 rgba(255,255,255,.18)}
+.sessions-countdown::before,.insight-hero::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+ background:linear-gradient(115deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,0) 38%),radial-gradient(60% 120% at 100% 0%,rgba(231,207,152,.16),transparent 60%)}
+.countdown-bar,.insight-kpis>div{-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+/* الجوال: شريط تنقل عائم على شكل كبسولة زجاجية */
+@media(max-width:760px){
+ .circuit-app .sidebar{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));width:auto;height:66px;padding:5px;border-radius:26px;border:1px solid rgba(255,255,255,.28)!important;
+  background:linear-gradient(160deg,rgba(9,128,108,.78),rgba(6,84,70,.84));box-shadow:0 14px 40px rgba(5,60,50,.30),inset 0 1px 0 rgba(255,255,255,.28)}
+ .circuit-app .nav button{border-radius:20px}
+ .circuit-app .nav button.active{background:rgba(255,255,255,.2);border-bottom:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 12px rgba(0,0,0,.12)}
+ .circuit-app .main{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+ .circuit-app .modal{border-radius:0}
+}
+@media (prefers-reduced-transparency:reduce){
+ .circuit-app .topbar,.circuit-app .modal,.circuit-app .card,.circuit-app .case-row,.circuit-app .stat{background-color:#fff!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+}
