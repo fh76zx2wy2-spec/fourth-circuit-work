@@ -141,9 +141,16 @@ export function Index() {
       if (!current || !current.active.length) return prev;
       // جرّب مع ظروف الموظفين؛ إن تعذّر، وزّع دونها مع تنبيه.
       const limits = current.limits && Object.keys(current.limits).some(name => current.active.includes(name)) ? current.limits : undefined;
-      let assigned = limits ? distributeFairly(current.hearings.length, current.active, prev.days, prev.selectedDate, Math.random, limits) : null;
+      // جلسات القضايا التي سبقت لها جلسات (من المنظم، بمطابقة الوقت).
+      const slots = (globalThis as { __organizerHearings?: (d: string) => Array<{ h: number; m: number; multi?: boolean }> }).__organizerHearings?.(prev.selectedDate) ?? [];
+      const multi = new Set(slots.filter(x => x.multi).map(x => `${x.h}:${x.m}`));
+      const ordered = sortChrono(current.hearings);
+      const followups = multi.size ? ordered.map(h => multi.has(`${h.h}:${h.m}`)) : undefined;
+      const n = current.hearings.length, act = current.active, days = prev.days, sel = prev.selectedDate;
+      let assigned = distributeFairly(n, act, days, sel, Math.random, limits, followups)
+        ?? (followups ? distributeFairly(n, act, days, sel, Math.random, limits, followups, true) : null);
       const limitsRelaxed = Boolean(limits) && !assigned;
-      assigned ??= distributeFairly(current.hearings.length, current.active, prev.days, prev.selectedDate) ?? [];
+      assigned ??= distributeFairly(n, act, days, sel, Math.random, undefined, followups, true) ?? [];
       const byHearing = new Map(sortChrono(current.hearings).map((hearing, i) => [hearing.id, assigned[i] ?? null]));
       return { ...prev, days: {
         ...prev.days,

@@ -17,7 +17,9 @@ export type DayRecord = {
 export type HistoryData = { version: 2; selectedDate: string; days: Record<string, DayRecord> };
 
 const knownClerks: readonly string[] = CLERKS;
-const separatedClerks = new Set<string>([CLERKS[1], CLERKS[4]]);
+const separatedClerks = new Set<string>([CLERKS[3], CLERKS[4]]);
+// ترتيب إسناد جلسات القضايا ذات الجلسات السابقة (الأول أولى).
+const continuityOrder: readonly string[] = [CLERKS[0], CLERKS[2], CLERKS[1]];
 
 function violatesSpacing(sequence: (string | null)[], candidate: string): boolean {
   const previous = sequence.at(-1);
@@ -50,15 +52,22 @@ function separationCost(gap: number): number {
   return 8 + 28 * (gap - 4) ** 2;
 }
 
-function arrangeHearings(quotas: Map<string, number>, rng: () => number, limits?: DayLimits): string[] | null {
+function arrangeHearings(quotas: Map<string, number>, rng: () => number, limits?: DayLimits, followups?: boolean[], soft = false): string[] | null {
   const names = shuffle([...quotas.keys()].filter(name => quotas.get(name)! > 0), rng);
   const initial = names.map(name => quotas.get(name)!);
-  if (names.length <= 1 && !limits) return Array<string>(initial[0] ?? 0).fill(names[0] ?? "");
+  if (names.length <= 1 && !limits && !followups) return Array<string>(initial[0] ?? 0).fill(names[0] ?? "");
   const separated = names.map(name => separatedClerks.has(name));
   const total = initial.reduce((sum, count) => sum + count, 0);
   // الجلسات مرتبة زمنيًا؛ الموضع يحدد ثلث اليوم.
   const third = (position: number) => Math.min(2, Math.floor(position * 3 / total));
   const blocked = names.map(name => limits?.[name] ?? -1);
+  const isFollowup = (p: number) => Boolean(followups?.[p]);
+  const continuity = names.map(name => continuityOrder.indexOf(name));
+  const outsider = names.map(name => !continuityOrder.includes(name));
+  const hardOutsider = Boolean(followups) && !soft;
+  // followupsAfter[p]: عدد جلسات المتابعة من الموضع p فما بعد.
+  const followupsAfter = Array<number>(total + 1).fill(0);
+  for (let p = total - 1; p >= 0; p--) followupsAfter[p] = followupsAfter[p + 1]! + (isFollowup(p) ? 1 : 0);
   // allowedAfter[b][p]: عدد المواضع من p فما بعد خارج الثلث b.
   const allowedAfter = [0, 1, 2].map(b => {
     const counts = Array<number>(total + 1).fill(0);
@@ -76,11 +85,17 @@ function arrangeHearings(quotas: Map<string, number>, rng: () => number, limits?
       for (let i = 0; i < names.length; i++) {
         if (!layout.remaining[i]) continue;
         if (blocked[i] === third(position)) continue;
+        if (hardOutsider && outsider[i] && isFollowup(position)) continue;
         const run = previous === i ? layout.run + 1 : 1;
         if (!separated[i] && run > MAX_GROUP_SIZE) continue;
         const remaining = [...layout.remaining];
         remaining[i] = remaining[i]! - 1;
         if (remaining.some((count, j) => blocked[j]! >= 0 && count > allowedAfter[blocked[j]!]![position + 1]!)) continue;
+        if (hardOutsider) {
+          const insiders = remaining.reduce((sum, count, j) => sum + (outsider[j] ? 0 : count), 0);
+          const plain = total - position - 1 - followupsAfter[position + 1]!;
+          if (followupsAfter[position + 1]! > insiders || remaining.some((count, j) => outsider[j] && count > plain)) continue;
+        }
         // Preserve enough slots to break any remaining runs of grouped clerks.
         const unplaced = total - position - 1;
         if (remaining.some((count, j) => !separated[j] &&
@@ -97,6 +112,7 @@ function arrangeHearings(quotas: Map<string, number>, rng: () => number, limits?
             cost += breakCost + 2 * gap ** 2 + 18 * Math.max(0, gap - 4) ** 2;
           }
         }
+        if (isFollowup(position)) cost += outsider[i] ? 400 : continuity[i]! * 6;
         last[i] = position;
         // Price open gaps as they grow so a good partial layout doesn't strand a clerk at the end.
         const pending = remaining.reduce((sum, count, j) => {
@@ -232,7 +248,7 @@ export function historicalDebt(days: Record<string, DayRecord>, beforeDate: stri
 /** Base even split per day; historical least-served employees get first dibs on extras. */
 export function distributeFairly(
   n: number, active: string[], days: Record<string, DayRecord>, date: string,
-  rng: () => number = Math.random, limits?: DayLimits,
+  rng: () => number = Math.random, limits?: DayLimits, followups?: boolean[], soft = false,
 ): string[] | null {
   if (n <= 0 || active.length === 0) return [];
   const unique = [...new Set(active)];
@@ -245,7 +261,7 @@ export function distributeFairly(
   for (let i = 0; i < preference.length; i++) {
     remaining.set(preference[i]!, base + (i < surplus ? 1 : 0));
   }
-  return arrangeHearings(remaining, rng, limits);
+  return arrangeHearings(remaining, rng, limits, followups, soft);
 }
 
 /** Assign only newly added hearings without changing the existing distribution. */

@@ -2520,7 +2520,7 @@ function showHearings(){
  if(hearingsMount)return;
  // توزيع الجلسات: اليوم غير المحفوظ يُعبّأ تلقائيًا بأوقات جلسات المنظم (المطابقة لتقاضي).
  globalThis.__organizerHearings=date=>state.cases.filter(c=>c.session_date===date&&!c.deleted_at&&c.session_time)
-  .map(c=>{const [h,m]=String(c.session_time).split(':').map(Number);const hh=Math.min(14,Math.max(8,h||8));const slot={h:hh,m:hh===14?0:Math.min(59,Math.max(0,m||0))};
+  .map(c=>{const [h,m]=String(c.session_time).split(':').map(Number);const hh=Math.min(14,Math.max(8,h||8));const slot={h:hh,m:hh===14?0:Math.min(59,Math.max(0,m||0)),multi:c.stage==='followup'||Number(c.session_number)>=2};
    if(c.session_end_time){const [eh,em]=String(c.session_end_time).split(':').map(Number);if(eh*60+em>slot.h*60+slot.m&&eh*60+em<=15*60){slot.endH=eh;slot.endM=em;}}
    return slot;})
   .sort((a,b)=>a.h*60+a.m-(b.h*60+b.m));
@@ -2530,7 +2530,7 @@ function showHearings(){
   if(/بكري|^يحيى/.test(n))return 'يحيى محمد إبراهيم بكري';
   if(/زياد|البابطين/.test(n))return 'زياد بن محمد البابطين';
   return n;};
- hearingsMount=import('./assets/hearings/main.js?v=5.0.32').then(module=>{
+ hearingsMount=import('./assets/hearings/main.js?v=5.0.33').then(module=>{
   module.mount(hearingsContainer,{
    getToken:async()=>state.client?(await state.client.auth.getSession()).data.session?.access_token??null:null,
    subscribe:listener=>{
