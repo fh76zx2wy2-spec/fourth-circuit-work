@@ -750,3 +750,14 @@ html[data-theme="dark"] .stats-hero{box-shadow:0 18px 40px rgba(0,0,0,.35)}
 html[data-theme="dark"] .lc-n{color:#f0925f}html[data-theme="dark"] .lc-done{color:#6fd3a8}html[data-theme="dark"] .lc-next.warn{color:#ef8f84}
 @media(max-width:760px){.lc-cols{grid-template-columns:1fr}}
 @media(max-width:760px){.circuit-app .nav .tile-full{display:none}.circuit-app .nav .tile-short{display:inline;white-space:nowrap}}
+/* الشريط العلوي في الجوال: الإشعارات والإعدادات فقط، والباقي داخل الإعدادات */
+@media(max-width:760px){
+ .circuit-app .topbar [data-action="view-as-menu"],.circuit-app .topbar [data-action="organizer-passkey-settings"],
+ .circuit-app .topbar .mobile-logout,.circuit-app .topbar [data-action="refresh"]{display:none!important}
+}
+.settings-actions{display:flex;flex-direction:column;gap:6px}
+.settings-link{display:flex;align-items:center;justify-content:space-between;width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font:inherit;font-size:14px;color:var(--text);cursor:pointer;text-align:start}
+.settings-link span{color:var(--muted);font-size:18px;line-height:1}
+.settings-link:hover{border-color:var(--brown)}
+.settings-link.danger{color:#a23a2a}
+.notification-bell svg{width:19px;height:19px}
