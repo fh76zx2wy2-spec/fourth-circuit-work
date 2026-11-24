@@ -660,3 +660,7 @@ html:not(.classic) .countdown-bar,html:not(.classic) .insight-kpis>div{-webkit-b
 .tab-short{display:none}
 @media(max-width:760px){.tab-full{display:none}.tab-short{display:inline}.view-switch{display:flex}.view-switch button{flex:1;justify-content:center;padding:9px 6px}
  .sheet-kpis{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.sheet-kpis::-webkit-scrollbar{display:none}.sheet-bar [data-action="print-sheet"]{display:none}}
+.sheet-recon{margin:12px 0 0;padding:9px 14px;border-radius:12px;font-size:13px;background:var(--surface);border:1px solid var(--border);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sheet-recon.ok{background:#e6f6ed;border-color:#bfe5cf;color:#1f6b4f;font-weight:600}
+.sheet-recon.wait{background:#fff5df;border-color:#f0dcaa;color:#8a6d2c}
+@media print{.sheet-recon{display:none}}

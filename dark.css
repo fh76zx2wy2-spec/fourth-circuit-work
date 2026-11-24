@@ -409,6 +409,9 @@ html[data-theme="dark"] .settings-toggle i{background:#354a42}
 html[data-theme="dark"] .settings-toggle i::after{background:#131817}
 html[data-theme="dark"] .settings-toggle input:checked+i{background:var(--brown)}
 html[data-theme="dark"] .settings-toggle input:focus-visible+i{outline:2px solid var(--brown)}
+html[data-theme="dark"] .sheet-recon{background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+html[data-theme="dark"] .sheet-recon.ok{background:#193123;border-color:#375c47;color:#a9decb}
+html[data-theme="dark"] .sheet-recon.wait{background:#302819;border-color:#5f5439;color:#d7c396}
 /* diwan/workspace.css */
 html[data-theme="dark"] #diwan-slot .diwan-page-head p{color:var(--muted)}
 html[data-theme="dark"] #diwan-slot .diwan-status{color:var(--text)}

@@ -263,6 +263,7 @@ async function openTaskNotification(id,read=true){
 }
 function openNotificationLink(){
  const digest=location.hash.slice(1);
+ if((digest==='brief'||digest==='review')&&!isJudge()&&state.profile){history.replaceState(null,'',location.pathname+location.search);state.screen='review';void loadReview();render();return;}
  if((digest==='brief'||digest==='weekly')&&isJudge()){
   history.replaceState(null,'',location.pathname+location.search);
   state.screen='cases';state.casesView=digest==='brief'?'sheet':'weekly';state.detailId=null;
@@ -776,7 +777,12 @@ function sheetPage(){
  const waits=list.filter(c=>{const f=state.followups?.get(c.id);return f&&f.status!=='arrived';}).length;
  const longc=list.filter(c=>c.stage!=='first'&&Number(c.session_number)>=5).length;
  const kpis=[[list.length,'جلسة'],[firsts,'أولى'],[longc,'مطوّلة'],[waits,'متابعة لم ترد']].map(([v,l])=>`<span><b>${v}</b>${l}</span>`).join('');
- return `<div class="sheet"><div class="sheet-bar">${workdaySelect(day,'data-filter-date','يوم الورقة')}<div class="sheet-kpis">${kpis}</div><button class="btn" data-action="print-sheet">طباعة الورقة</button></div>
+ if(!reviewState.loaded)void loadReview();
+ const snap=reviewState.snapshots[day],rc=reviewState.recon[day];
+ const t=iso=>new Date(iso).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit',timeZone:'Asia/Riyadh'});
+ const who=n=>String(n||'').split(' ').filter((w,i,a)=>i===0||i===a.length-1).join(' ');
+ const recon=!reviewState.loaded||!list.length?'':rc&&snap&&rc.snapshot_fetched_at===snap.fetched_at?`<div class="sheet-recon ok">✓ أكّد ${esc(who(rc.confirmed_by_name))} مطابقة الجلسات مع تقاضي · ${esc(t(rc.confirmed_at))}</div>`:!snap?'<div class="sheet-recon">لم تُسحب قائمة هذا اليوم من تقاضي بعد.</div>':'<div class="sheet-recon wait">لم تُؤكَّد مطابقة جلسات هذا اليوم مع تقاضي بعد.</div>';
+ return `<div class="sheet">${recon}<div class="sheet-bar">${workdaySelect(day,'data-filter-date','يوم الورقة')}<div class="sheet-kpis">${kpis}</div><button class="btn" data-action="print-sheet">طباعة الورقة</button></div>
  <div class="sheet-print-head"><b>ورقة الجلسات</b><span>${esc(hijriLong(day))}</span></div>
  ${list.length?`<ol class="sheet-list">${list.map(sheetRow).join('')}</ol>`:'<div class="card empty"><b>لا توجد جلسات في هذا اليوم.</b></div>'}</div>`;
 }
@@ -1906,7 +1912,7 @@ async function loadReview(){
  reviewState.snapshots=Object.fromEntries((s.data||[]).map(x=>[x.session_date,x]));
  reviewState.recon=Object.fromEntries((r.data||[]).map(x=>[x.session_date,x]));
  reviewState.loaded=true;
- if(state.screen==='review')render();
+ if(state.screen==='review'||(state.screen==='cases'&&state.casesView==='sheet'))render();
 }
 function reviewDays(){return fiveWorkdays();}
 function reviewRows(date){
