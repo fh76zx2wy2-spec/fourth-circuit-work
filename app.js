@@ -1665,9 +1665,10 @@ const taskStates={open:'قيد التنفيذ',pending:'بانتظار التأ�
 const assignmentState=a=>a.confirmed_at?'done':a.executed_at?'pending':'open';
 const taskState=t=>taskComplete(t)?'done':t.task_assignments?.some(a=>assignmentState(a)==='pending')?'pending':'open';
 const expandedTaskCards=new Set();
+const mailboxTask=t=>t.source==='email'&&t.category==='email'&&t.assigned_to?.length===1&&t.assigned_to[0]===t.created_by;
 function taskViewMembership(task){
  const mine=myAssignment(task);
- const sent=state.viewAs?task.created_by===viewerId():(task.sent_by_me??(task.created_by===actorId()));
+ const sent=!mailboxTask(task)&&(state.viewAs?task.created_by===viewerId():(task.sent_by_me??(task.created_by===actorId())));
  const pending=a=>assignmentState(a)==='pending';
  if(!isJudge()&&sent&&task.sender_ack_at&&!mine)return {mine:false,sent:false,done:false,pending:false,all:false};
  return {
@@ -1738,7 +1739,7 @@ function taskRow(t,expanded=false){
  ${taskNeedsProposal(t)&&t.proposed_action?.trim()?`<div class="task-details"><strong>الإجراء المقترح:</strong> ${esc(t.proposed_action)}</div>`:''}
  ${t.source==='email'?`<div class="task-source-note">📧 وصلت هذه المهمة من البريد${t.source_sender?` · المرسل: <strong>${esc(t.source_sender)}</strong>`:''}${t.source_subject?` · الموضوع: ${esc(t.source_subject)}`:''}${t.source_received_at?` · ${stamp(t.source_received_at)}`:''}</div>`:''}
  ${taskDirectiveBox(t)}
- <div class="task-meta"><span>أرسلها: ${esc(profileName(t.created_by))}</span>${t.completion_mode==='any'?'<span>يكفي تنفيذ أحدهم</span>':''}<span>${esc(taskCategories[t.category]||'أخرى')}</span>${t.case_number?`<span>رقم القضية: ${caseNumberButton(t.case_number)}</span>`:''}${t.due_date?`<span>الموعد: ${hijri(t.due_date)}</span>`:''}</div>
+ <div class="task-meta"><span>أرسلها: ${mailboxTask(t)?'البريد':esc(profileName(t.created_by))}</span>${t.completion_mode==='any'?'<span>يكفي تنفيذ أحدهم</span>':''}<span>${esc(taskCategories[t.category]||'أخرى')}</span>${t.case_number?`<span>رقم القضية: ${caseNumberButton(t.case_number)}</span>`:''}${t.due_date?`<span>الموعد: ${hijri(t.due_date)}</span>`:''}</div>
  ${assignments.map(a=>{
   const button=(action,label)=>`<button type="button" class="btn btn-small btn-soft" data-task-transition="${action}" data-task-id="${esc(t.id)}" data-assignee="${esc(a.assignee_id)}">${label}</button>`;
   return `<div class="task-card-assignment"><strong>${esc(a.assignee_name)} · ${a.executed_at&&!a.confirmed_at?'تم التنفيذ · بانتظار التأكيد':a.attempt>0&&!a.executed_at?'أُعيدت للاستكمال':taskStates[assignmentState(a)]}</strong>
