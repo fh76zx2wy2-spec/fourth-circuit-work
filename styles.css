@@ -664,3 +664,7 @@ html:not(.classic) .countdown-bar,html:not(.classic) .insight-kpis>div{-webkit-b
 .sheet-recon.ok{background:#e6f6ed;border-color:#bfe5cf;color:#1f6b4f;font-weight:600}
 .sheet-recon.wait{background:#fff5df;border-color:#f0dcaa;color:#8a6d2c}
 @media print{.sheet-recon{display:none}}
+.sheet-recon.ok{display:flex;align-items:center;gap:10px}
+.sheet-recon.ok>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.sheet-recon.ok>small{margin-inline-start:auto;flex:none;font-weight:600;font-size:12px;padding:2px 10px;border-radius:20px;background:rgba(31,107,79,.1)}
+@media(max-width:760px){.sheet-recon.ok{flex-direction:column;align-items:flex-start;gap:6px;white-space:nowrap}.sheet-recon.ok>small{margin-inline-start:0}}

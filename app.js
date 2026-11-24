@@ -770,6 +770,14 @@ function sheetRow(c){
  const mem=memoryBadge(c);
  return `<li class="sheet-row" data-detail="${esc(c.id)}" role="button" tabindex="0"><div class="sheet-time">${esc(tm(c.session_time))}</div><div class="sheet-main"><div class="sheet-head">${caseNumberButton(c.case_number)}<span class="sheet-type">${esc(c.case_type||'قضية')}</span><span class="sheet-stage">${first?'جلسة أولى':Number.isInteger(n)&&n>1?`الجلسة ${n}`:'جلسة لاحقة'}</span>${flags.join('')}${mem}</div><div class="sheet-parties">${esc(short(c.plaintiffs||'',60))} × ${esc(short(c.defendants||'',60))}</div><div class="sheet-line"><b>${first?'الدعوى':'آخر جلسة'}</b><span>${esc(short(first?(c.claim_summary||'لم يُدخل موضوع الدعوى'):sheetLastLine(c),220))}</span></div>${need?`<div class="sheet-line need"><b>المطلوب اليوم</b><span>${esc(need)}</span></div>`:''}</div></li>`;
 }
+// «منذ 8 ساعات و19 دقيقة»
+function agoWord(iso){
+ const m=Math.max(0,Math.round((Date.now()-Date.parse(iso))/6e4)),d=Math.floor(m/1440),h=Math.floor(m%1440/60),mi=m%60;
+ const w=(n,one,two,few,many)=>n===1?one:n===2?two:n<=10?`${n} ${few}`:`${n} ${many}`;
+ if(m<1)return 'الآن';
+ const parts=d?[w(d,'يوم','يومين','أيام','يومًا'),h?w(h,'ساعة','ساعتين','ساعات','ساعة'):'']:[h?w(h,'ساعة','ساعتين','ساعات','ساعة'):'',mi?w(mi,'دقيقة','دقيقتين','دقائق','دقيقة'):''];
+ return 'منذ '+parts.filter(Boolean).join(' و');
+}
 function sheetPage(){
  const day=state.filterDate;
  const list=state.cases.filter(c=>c.session_date===day&&!c.deleted_at).sort((a,b)=>String(a.session_time||'').localeCompare(String(b.session_time||'')));
@@ -781,7 +789,7 @@ function sheetPage(){
  const snap=reviewState.snapshots[day],rc=reviewState.recon[day];
  const t=iso=>new Date(iso).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit',timeZone:'Asia/Riyadh'});
  const who=n=>String(n||'').split(' ').filter((w,i,a)=>i===0||i===a.length-1).join(' ');
- const recon=!reviewState.loaded||!list.length?'':rc&&snap&&rc.snapshot_fetched_at===snap.fetched_at?`<div class="sheet-recon ok">✓ أكّد ${esc(who(rc.confirmed_by_name))} مطابقة الجلسات مع تقاضي · ${esc(t(rc.confirmed_at))}</div>`:!snap?'<div class="sheet-recon">لم تُسحب قائمة هذا اليوم من تقاضي بعد.</div>':'<div class="sheet-recon wait">لم تُؤكَّد مطابقة جلسات هذا اليوم مع تقاضي بعد.</div>';
+ const recon=!reviewState.loaded||!list.length?'':rc&&snap&&rc.snapshot_fetched_at===snap.fetched_at?`<div class="sheet-recon ok"><span>✓ أكّد ${esc(who(rc.confirmed_by_name))} <span class="tab-full">مطابقة الجلسات مع تقاضي </span>· ${esc(hijriLong(new Date(rc.confirmed_at).toLocaleDateString('en-CA',{timeZone:'Asia/Riyadh'})).replace(/\s*\d{4}\s*هـ$/,''))} · ${esc(t(rc.confirmed_at))}</span><small>${esc(agoWord(rc.confirmed_at))}</small></div>`:!snap?'<div class="sheet-recon">لم تُسحب قائمة هذا اليوم من تقاضي بعد.</div>':'<div class="sheet-recon wait">لم تُؤكَّد مطابقة جلسات هذا اليوم مع تقاضي بعد.</div>';
  return `<div class="sheet">${recon}<div class="sheet-bar">${workdaySelect(day,'data-filter-date','يوم الورقة')}<div class="sheet-kpis">${kpis}</div><button class="btn" data-action="print-sheet">طباعة الورقة</button></div>
  <div class="sheet-print-head"><b>ورقة الجلسات</b><span>${esc(hijriLong(day))}</span></div>
  ${list.length?`<ol class="sheet-list">${list.map(sheetRow).join('')}</ol>`:'<div class="card empty"><b>لا توجد جلسات في هذا اليوم.</b></div>'}</div>`;
