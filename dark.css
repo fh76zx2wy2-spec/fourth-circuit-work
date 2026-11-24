@@ -450,6 +450,18 @@ html[data-theme="dark"][data-theme="dark"] .vbar.small i{background:#9085e9}
 html[data-theme="dark"][data-theme="dark"] .vbar.now i{background:repeating-linear-gradient(135deg,#3987e5 0 6px,#2a5d9c 6px 9px)}
 html[data-theme="dark"][data-theme="dark"] .hbar u{background:#199e70}
 html[data-theme="dark"][data-theme="dark"] .vbar em{color:#6aa6ee}
+html[data-theme="dark"] .lc-bar{background:color-mix(in srgb,#eb6834 14%,transparent)}
+html[data-theme="dark"] .lc-bar i{background:linear-gradient(90deg,#1baf7a,#0b8f74)}
+html[data-theme="dark"] .lc-cols h4{color:var(--muted)}
+html[data-theme="dark"] .lc-cols h4 span{background:var(--surface);color:var(--text)}
+html[data-theme="dark"] .lc-cols li{background:var(--surface)}
+html[data-theme="dark"] .lc-n{color:#d09d83}
+html[data-theme="dark"] .lc-next{color:var(--muted)}
+html[data-theme="dark"] .lc-next.warn{color:#d4968c}
+html[data-theme="dark"] .lc-done{color:#a9decb}
+html[data-theme="dark"][data-theme="dark"] .lc-n{color:#f0925f}
+html[data-theme="dark"][data-theme="dark"] .lc-done{color:#6fd3a8}
+html[data-theme="dark"][data-theme="dark"] .lc-next.warn{color:#ef8f84}
 /* diwan/workspace.css */
 html[data-theme="dark"] #diwan-slot .diwan-page-head p{color:var(--muted)}
 html[data-theme="dark"] #diwan-slot .diwan-status{color:var(--text)}
