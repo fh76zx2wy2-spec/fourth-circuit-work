@@ -116,7 +116,7 @@ function arrangeHearings(quotas: Map<string, number>, rng: () => number, limits?
           }
         }
         // إن تعذّر تجنّبها فالأخف (أقل جلسات) لهما، والأثقل للأول في الترتيب.
-        if (isFollowup(position)) cost += outsider[i] ? 400 + 40 * weight(position) : Math.max(0, continuity[i]!) * 2 * weight(position);
+        if (isFollowup(position)) cost += outsider[i] ? 400 + 40 * weight(position) : Math.max(0, continuity[i]!) * 10 * weight(position);
         last[i] = position;
         // Price open gaps as they grow so a good partial layout doesn't strand a clerk at the end.
         const pending = remaining.reduce((sum, count, j) => {
