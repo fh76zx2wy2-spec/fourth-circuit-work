@@ -49,8 +49,11 @@ type Arrangement = {
 
 function separationCost(gap: number): number {
   if (gap === 0) return 1500;
-  if (gap <= 3) return gap - 1;
-  return 8 + 28 * (gap - 4) ** 2;
+  // جلسة واحدة بين كل جلستين هي الأنسب؛ تكبر الكلفة مع اتساع الفاصل.
+  if (gap === 1) return 0;
+  if (gap === 2) return 10;
+  if (gap === 3) return 40;
+  return 80 + 40 * (gap - 4) ** 2;
 }
 
 function arrangeHearings(quotas: Map<string, number>, rng: () => number, limits?: DayLimits, followups?: number[], soft = false): string[] | null {
@@ -115,14 +118,21 @@ function arrangeHearings(quotas: Map<string, number>, rng: () => number, limits?
             cost += breakCost + 2 * gap ** 2 + 18 * Math.max(0, gap - 4) ** 2;
           }
         }
-        // إن تعذّر تجنّبها فالأخف (أقل جلسات) لهما، والأثقل للأول في الترتيب.
-        if (isFollowup(position)) cost += outsider[i] ? 400 + 40 * weight(position) : Math.max(0, continuity[i]!) * 10 * weight(position);
+        // الجلسات اللاحقة: تُتجنَّب لهما (والأخف إن لزم)، وتتوزع بالتساوي بين الثلاثة.
+        if (isFollowup(position)) {
+          if (outsider[i]) cost += 150 + 20 * weight(position);
+          else {
+            let taken = 0, load = 0;
+            layout.order.forEach((who, p) => { if (who === i && isFollowup(p)) { taken++; load += weight(p); } });
+            cost += 25 * taken + 4 * load;
+          }
+        }
         last[i] = position;
         // Price open gaps as they grow so a good partial layout doesn't strand a clerk at the end.
         const pending = remaining.reduce((sum, count, j) => {
           if (!count || last[j] === -1) return sum;
           const wait = position - last[j]!;
-          return sum + (separated[j] ? Math.max(0, wait - 2) ** 2 * 12 : wait ** 2 * 8);
+          return sum + (separated[j] ? Math.max(0, wait - 2) ** 2 * 30 : wait ** 2 * 8);
         }, 0);
         const rank = cost + pending;
         const key = `${remaining.join(",")}|${last.join(",")}|${run}`;

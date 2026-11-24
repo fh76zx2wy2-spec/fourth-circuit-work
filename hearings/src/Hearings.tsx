@@ -147,8 +147,8 @@ export function Index() {
       const ordered = sortChrono(current.hearings);
       const followups = weights.size ? ordered.map(h => weights.get(`${h.h}:${h.m}`) ?? 0) : undefined;
       const n = current.hearings.length, act = current.active, days = prev.days, sel = prev.selectedDate;
-      let assigned = distributeFairly(n, act, days, sel, Math.random, limits, followups)
-        ?? (followups ? distributeFairly(n, act, days, sel, Math.random, limits, followups, true) : null);
+      // المعايير مرنة: تُراعى قدر الإمكان دون أن تمنع التوزيع.
+      let assigned = distributeFairly(n, act, days, sel, Math.random, limits, followups, true);
       const limitsRelaxed = Boolean(limits) && !assigned;
       assigned ??= distributeFairly(n, act, days, sel, Math.random, undefined, followups, true) ?? [];
       const byHearing = new Map(sortChrono(current.hearings).map((hearing, i) => [hearing.id, assigned[i] ?? null]));
