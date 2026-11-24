@@ -4,10 +4,15 @@ import { weekStart } from "./domain.ts";
 export const HISTORY_STORAGE_KEY = "fourth-circuit-history-v2";
 export const LEGACY_STORAGE_KEY = "dist4-state-v1";
 
+/** ظرف الموظف ليوم واحد: ثلث اليوم الذي لا تُسند إليه فيه جلسات (0 أول اليوم، 1 وسطه، 2 آخره). */
+export type DayLimits = Record<string, 0 | 1 | 2>;
 export type DayRecord = {
   hearings: Hearing[];
   active: string[];
   distributed: boolean;
+  limits?: DayLimits;
+  /** تعذّر مراعاة الظروف كلها في آخر قرعة فوُزّعت دونها. */
+  limitsRelaxed?: boolean;
 };
 export type HistoryData = { version: 2; selectedDate: string; days: Record<string, DayRecord> };
 
@@ -45,12 +50,21 @@ function separationCost(gap: number): number {
   return 8 + 28 * (gap - 4) ** 2;
 }
 
-function arrangeHearings(quotas: Map<string, number>, rng: () => number): string[] {
+function arrangeHearings(quotas: Map<string, number>, rng: () => number, limits?: DayLimits): string[] | null {
   const names = shuffle([...quotas.keys()].filter(name => quotas.get(name)! > 0), rng);
   const initial = names.map(name => quotas.get(name)!);
-  if (names.length <= 1) return Array<string>(initial[0] ?? 0).fill(names[0] ?? "");
+  if (names.length <= 1 && !limits) return Array<string>(initial[0] ?? 0).fill(names[0] ?? "");
   const separated = names.map(name => separatedClerks.has(name));
   const total = initial.reduce((sum, count) => sum + count, 0);
+  // الجلسات مرتبة زمنيًا؛ الموضع يحدد ثلث اليوم.
+  const third = (position: number) => Math.min(2, Math.floor(position * 3 / total));
+  const blocked = names.map(name => limits?.[name] ?? -1);
+  // allowedAfter[b][p]: عدد المواضع من p فما بعد خارج الثلث b.
+  const allowedAfter = [0, 1, 2].map(b => {
+    const counts = Array<number>(total + 1).fill(0);
+    for (let p = total - 1; p >= 0; p--) counts[p] = counts[p + 1]! + (third(p) !== b ? 1 : 0);
+    return counts;
+  });
   // Keep several promising partial layouts so choosing one clerk never commits the whole draw.
   const beamWidth = 48;
   let layouts: Arrangement[] = [{ order: [], remaining: initial, last: names.map(() => -1), run: 0, cost: 0 }];
@@ -61,10 +75,12 @@ function arrangeHearings(quotas: Map<string, number>, rng: () => number): string
       const previous = layout.order.at(-1);
       for (let i = 0; i < names.length; i++) {
         if (!layout.remaining[i]) continue;
+        if (blocked[i] === third(position)) continue;
         const run = previous === i ? layout.run + 1 : 1;
         if (!separated[i] && run > MAX_GROUP_SIZE) continue;
         const remaining = [...layout.remaining];
         remaining[i] = remaining[i]! - 1;
+        if (remaining.some((count, j) => blocked[j]! >= 0 && count > allowedAfter[blocked[j]!]![position + 1]!)) continue;
         // Preserve enough slots to break any remaining runs of grouped clerks.
         const unplaced = total - position - 1;
         if (remaining.some((count, j) => !separated[j] &&
@@ -97,6 +113,7 @@ function arrangeHearings(quotas: Map<string, number>, rng: () => number): string
       }
     }
     layouts = [...next.values()].sort((a, b) => a.rank - b.rank).slice(0, beamWidth).map(entry => entry.layout);
+    if (!layouts.length) return null;
   }
   return layouts[0]!.order.map(index => names[index]!);
 }
@@ -215,8 +232,8 @@ export function historicalDebt(days: Record<string, DayRecord>, beforeDate: stri
 /** Base even split per day; historical least-served employees get first dibs on extras. */
 export function distributeFairly(
   n: number, active: string[], days: Record<string, DayRecord>, date: string,
-  rng: () => number = Math.random,
-): string[] {
+  rng: () => number = Math.random, limits?: DayLimits,
+): string[] | null {
   if (n <= 0 || active.length === 0) return [];
   const unique = [...new Set(active)];
   const debts = historicalDebt(days, date);
@@ -228,7 +245,7 @@ export function distributeFairly(
   for (let i = 0; i < preference.length; i++) {
     remaining.set(preference[i]!, base + (i < surplus ? 1 : 0));
   }
-  return arrangeHearings(remaining, rng);
+  return arrangeHearings(remaining, rng, limits);
 }
 
 /** Assign only newly added hearings without changing the existing distribution. */

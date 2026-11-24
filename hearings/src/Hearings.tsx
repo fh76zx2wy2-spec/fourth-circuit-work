@@ -129,17 +129,26 @@ export function Index() {
     ...d, active: d.active.includes(c) ? d.active.filter(x => x !== c) : CLERKS.filter(x => x === c || d.active.includes(x)),
     hearings: d.hearings.map(h => ({ ...h, clerk: null, originalClerk: null })), distributed: false,
   }));
+  const setLimit = (c: string, value: string) => updateDay(d => {
+    const limits = { ...(d.limits ?? {}) };
+    if (value === "") delete limits[c]; else limits[c] = Number(value) as 0 | 1 | 2;
+    return { ...d, limits, hearings: d.hearings.map(h => ({ ...h, clerk: null, originalClerk: null })), distributed: false };
+  });
   const performDraw = () => {
     if (!active.length) return;
     setData(prev => {
       const current = prev.days[prev.selectedDate];
       if (!current || !current.active.length) return prev;
-      const assigned = distributeFairly(current.hearings.length, current.active, prev.days, prev.selectedDate);
+      // جرّب مع ظروف الموظفين؛ إن تعذّر، وزّع دونها مع تنبيه.
+      const limits = current.limits && Object.keys(current.limits).some(name => current.active.includes(name)) ? current.limits : undefined;
+      let assigned = limits ? distributeFairly(current.hearings.length, current.active, prev.days, prev.selectedDate, Math.random, limits) : null;
+      const limitsRelaxed = Boolean(limits) && !assigned;
+      assigned ??= distributeFairly(current.hearings.length, current.active, prev.days, prev.selectedDate) ?? [];
       const byHearing = new Map(sortChrono(current.hearings).map((hearing, i) => [hearing.id, assigned[i] ?? null]));
       return { ...prev, days: {
         ...prev.days,
         [prev.selectedDate]: {
-          ...current, hearings: current.hearings.map(h => ({ ...h, clerk: byHearing.get(h.id) ?? null, originalClerk: byHearing.get(h.id) ?? null })), distributed: true,
+          ...current, hearings: current.hearings.map(h => ({ ...h, clerk: byHearing.get(h.id) ?? null, originalClerk: byHearing.get(h.id) ?? null })), distributed: true, limitsRelaxed,
         },
       }};
     });
@@ -403,13 +412,13 @@ export function Index() {
           )}
 
           <Panel icon={<Users className="size-5" />} title="الموظفون المتاحون اليوم">
-            <ul className="grid sm:grid-cols-2 gap-2">
+            <ul className="grid gap-2">
               {CLERKS.map((c) => {
                 const on = active.includes(c);
                 return (
-                  <li key={c}>
+                  <li key={c} className="flex items-stretch gap-2">
                     <button type="button" role="switch" aria-checked={on} onClick={() => toggleClerk(c)}
-                      className={`w-full flex items-center justify-between gap-3 rounded-xl border px-3 py-3 text-start transition ${on ? "border-gold bg-accent" : "border-border bg-card opacity-70"}`}>
+                      className={`flex-1 min-w-0 flex items-center justify-between gap-3 rounded-xl border px-3 py-3 text-start transition ${on ? "border-gold bg-accent" : "border-border bg-card opacity-70"}`}>
                       <span className="font-medium text-sm">{c}</span>
                       <span className="flex items-center gap-2">
                         {distributed && on && <span className="rounded-full bg-primary text-primary-foreground text-xs px-2 py-0.5">{counts[c] ?? 0}</span>}
@@ -418,6 +427,16 @@ export function Index() {
                         </span>
                       </span>
                     </button>
+                    {on && (
+                      <select aria-label={`ظرف ${c}`} title="وقت لا تُسند إليه فيه جلسات" value={String(day.limits?.[c] ?? "")}
+                        onChange={(e) => setLimit(c, e.target.value)}
+                        className={`shrink-0 rounded-xl border px-2 text-sm bg-card ${day.limits?.[c] !== undefined ? "border-gold text-primary font-semibold" : "border-border text-muted-foreground"}`}>
+                        <option value="">طوال اليوم</option>
+                        <option value="0">ليس أول اليوم</option>
+                        <option value="1">ليس وسط اليوم</option>
+                        <option value="2">ليس آخر اليوم</option>
+                      </select>
+                    )}
                   </li>
                 );
               })}
@@ -434,6 +453,7 @@ export function Index() {
             <CheckCircle2 className="inline size-4 align-middle text-success" /> العدالة عبر الأيام مفعّلة؛ الجلسات الزائدة للأقل نصيبًا في أيام حضوره. {totalDays > 0 ? `(${totalDays} يوم محفوظ)` : ""}
           </p>
 
+          {distributed && day.limitsRelaxed && <Alert tone="warn">تعذّر مراعاة ظروف الموظفين كلها بعدد الجلسات المتاح، فوُزّعت الجلسات دونها. خفّف أحد الظروف ثم أعد التوزيع.</Alert>}
           {invalid && <Alert tone="warn">هناك جلسات غير مسندة، اضغط «إعادة التوزيع» أو أسندها يدويًا.</Alert>}
           {spacingConflict && <Alert tone="warn">تعذّر تطبيق تفضيلات تباعد الجلسات بالكامل بعدد الموظفين المتاحين، أو أن التعديل اليدوي خالفها.</Alert>}
           {ready && !balanced && <Alert tone="warn">التعديل اليدوي جعل التوزيع غير متساوٍ (فرق أكثر من جلسة).</Alert>}
