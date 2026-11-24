@@ -1,4 +1,4 @@
-const revision = '8';
+const revision = '9';
 const diagnosticsCache = 'fourth-circuit-push-diagnostics';
 const diagnosticsUrl = new URL('last-receipt.json', self.registration.scope).href;
 const validId = id => typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id);
@@ -17,7 +17,8 @@ async function showPush(event) {
   } catch {
     receipt.payloadError = true;
   }
-  const {id, taskId, sender, testId, eventId, title: richTitle, body: richBody} = payload;
+  const {id, taskId, sender, testId, eventId, digest: digestKind, title: richTitle, body: richBody} = payload;
+  const digest = digestKind === 'brief' || digestKind === 'weekly' ? digestKind : null;
   const task = validId(taskId);
   const assigned = typeof sender === 'string' ? /^assigned:(ziyad|yahya|abdulrahman|unknown):(case|email|ticket|followup|general)$/.exec(sender) : null;
   const senderNames = {ziyad:'زياد البابطين',yahya:'يحيى بكري',abdulrahman:'عبد الرحمن الشريف'};
@@ -32,16 +33,16 @@ async function showPush(event) {
     'لديك مهمة جديدة. افتح الموقع للاطلاع عليها.';
   const test = validId(testId);
   if (test) receipt.testId = testId;
-  if (!test && !task && !validId(id)) receipt.payloadError = true;
+  if (!test && !task && !digest && !validId(id)) receipt.payloadError = true;
 
   try {
-    const rich = task && typeof richTitle === 'string' && richTitle.trim();
+    const rich = (task || digest) && typeof richTitle === 'string' && richTitle.trim();
     await self.registration.showNotification(rich ? richTitle.slice(0, 80) : 'المُــنـظِّـم', {
       body: test ? 'إشعار تجريبي — إشعارات الدائرة الرابعة تعمل بنجاح' : rich ? String(richBody || '').slice(0, 300) : task ? taskMessage : 'لديك إشعار جديد. افتح الموقع للاطلاع عليه.',
       lang: 'ar', dir: 'rtl',
-      tag: test ? 'push-test-' + testId : task ? 'task-' + (validId(eventId) ? eventId : taskId) : validId(id) ? 'case-submission-' + id : undefined,
+      tag: digest ? 'digest-' + digest : test ? 'push-test-' + testId : task ? 'task-' + (validId(eventId) ? eventId : taskId) : validId(id) ? 'case-submission-' + id : undefined,
       renotify: false,
-      data: test ? {testId} : task ? {taskId} : validId(id) ? {id} : {},
+      data: digest ? {digest} : test ? {testId} : task ? {taskId} : validId(id) ? {id} : {},
     });
   } catch (error) {
     receipt.status = 'failed';
@@ -66,9 +67,10 @@ self.addEventListener('push', event => event.waitUntil(showPush(event)));
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const {taskId, id} = event.notification.data || {};
+  const {taskId, id, digest} = event.notification.data || {};
   const url = new URL('./', self.registration.scope);
-  if (validId(taskId)) url.hash = 'task=' + taskId;
+  if (digest === 'brief' || digest === 'weekly') url.hash = digest;
+  else if (validId(taskId)) url.hash = 'task=' + taskId;
   else if (validId(id)) url.hash = 'submission=' + id;
   event.waitUntil(clients.openWindow(url.href));
 });
