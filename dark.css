@@ -413,6 +413,43 @@ html[data-theme="dark"] .sheet-recon{background:var(--surface);border:1px solid 
 html[data-theme="dark"] .sheet-recon.ok{background:#193123;border-color:#375c47;color:#a9decb}
 html[data-theme="dark"] .sheet-recon.wait{background:#302819;border-color:#5f5439;color:#d7c396}
 html[data-theme="dark"] .sheet-recon.ok>small{background:rgba(31,107,79,.1)}
+html[data-theme="dark"] .stats-hero{color:#fff;background:radial-gradient(120% 140% at 0% 0%,#f3c25a 0%,rgba(243,194,90,0) 45%),linear-gradient(125deg,#0b8f74 0%,#087967 45%,#2a78d6 120%)}
+html[data-theme="dark"] .stats-hero svg{color:#ffe08a}
+html[data-theme="dark"] .kpi{background:color-mix(in srgb,var(--acc) 9%,#131817);border:1px solid color-mix(in srgb,var(--acc) 22%,#2d3936)}
+html[data-theme="dark"] .kpi::before{background:var(--acc)}
+html[data-theme="dark"] .kpi-label{color:var(--muted)}
+html[data-theme="dark"] .kpi-value{color:var(--text)}
+html[data-theme="dark"] .kpi-sub{color:var(--muted)}
+html[data-theme="dark"] .kpi-delta.up{background:#193123;color:#a9decb}
+html[data-theme="dark"] .kpi-delta.down{background:#2a1816;color:#d4968c}
+html[data-theme="dark"] .kpi-ring{color:var(--text)}
+html[data-theme="dark"] .stats-card{background:#131817;border:1px solid var(--border)}
+html[data-theme="dark"] .stats-card h3 small{color:var(--muted)}
+html[data-theme="dark"] .stats-note{color:var(--muted)}
+html[data-theme="dark"] .vbar b{color:var(--text)}
+html[data-theme="dark"] .vbar i{background:#2a78d6}
+html[data-theme="dark"] .vbar.small i{background:#6250d6}
+html[data-theme="dark"] .vbar.now i{background:repeating-linear-gradient(135deg,#2a78d6 0 6px,#5c9be6 6px 9px)}
+html[data-theme="dark"] .vbar small{color:var(--muted)}
+html[data-theme="dark"] .vbar em{color:#2a78d6}
+html[data-theme="dark"] .hbar span{color:var(--text)}
+html[data-theme="dark"] .hbar i{background:color-mix(in srgb,#1baf7a 12%,transparent)}
+html[data-theme="dark"] .hbar u{background:#1baf7a}
+html[data-theme="dark"] .hbar.other u{background:#9aa7a2}
+html[data-theme="dark"] .hbar b{color:var(--text)}
+html[data-theme="dark"] .stack span{background:var(--c)}
+html[data-theme="dark"] .legend{color:var(--text)}
+html[data-theme="dark"] .legend i{background:var(--c)}
+html[data-theme="dark"] .team-card{background:color-mix(in srgb,#eda100 9%,#131817);border:1px solid color-mix(in srgb,#eda100 22%,#2d3936)}
+html[data-theme="dark"] .team-av{color:#fff;background:linear-gradient(135deg,#eda100,#eb6834)}
+html[data-theme="dark"] .team-card small{color:var(--muted)}
+html[data-theme="dark"][data-theme="dark"] .kpi{background:color-mix(in srgb,var(--acc) 16%,#121c1a);border-color:color-mix(in srgb,var(--acc) 30%,#121c1a)}
+html[data-theme="dark"][data-theme="dark"] .team-card{background:color-mix(in srgb,#eda100 12%,#121c1a);border-color:color-mix(in srgb,#eda100 26%,#121c1a)}
+html[data-theme="dark"][data-theme="dark"] .vbar i{background:#3987e5}
+html[data-theme="dark"][data-theme="dark"] .vbar.small i{background:#9085e9}
+html[data-theme="dark"][data-theme="dark"] .vbar.now i{background:repeating-linear-gradient(135deg,#3987e5 0 6px,#2a5d9c 6px 9px)}
+html[data-theme="dark"][data-theme="dark"] .hbar u{background:#199e70}
+html[data-theme="dark"][data-theme="dark"] .vbar em{color:#6aa6ee}
 /* diwan/workspace.css */
 html[data-theme="dark"] #diwan-slot .diwan-page-head p{color:var(--muted)}
 html[data-theme="dark"] #diwan-slot .diwan-status{color:var(--text)}

@@ -153,7 +153,7 @@ const DEMO_STORE = 'fourth-circuit-demo-v3-clean';
 const app = $('#app');
 const state = {client:null,user:null,profile:null,cases:DEMO?[...DEMO_CASES]:[],tasks:DEMO?[...DEMO_TASKS]:[],reportApprovals:[],notifications:[],profiles:DEMO?STAFF:[],taskEditorId:null,taskForm:null,taskFilter:'mine',taskSearch:'',selectedPerson:null,loginSent:false,authEmail:'',screen:'dashboard',filterDate:displayedWorkday,historyDate:null,search:'',stageFilter:'all',detailId:null,editorId:null,form:null,showSource:false,showNotifs:false,authMode:'login',authBusy:false,loading:false,posterApprovedOnly:false,exporting:false,sub:null,initialNotifLoad:true,followups:new Map()};
 // أيقونات الأقسام: الرئيسية بيت، الجلسات مطرقة، المهام لوح مهام، التوزيع تقويم بساعة، الديوان صندوق أرشيف.
-const navIcons = {"settings": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg>", "home": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3.5 10.5 12 3.8l8.5 6.7\"/><path d=\"M5.5 9v10.2h13V9\"/><path d=\"M10 19.2v-5.4h4v5.4\"/></svg>", "gavel": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"9.2\" y=\"2.8\" width=\"6\" height=\"9\" rx=\"1.3\" transform=\"rotate(45 12.2 7.3)\"/><path d=\"m11 10.8-6.6 6.6\"/><path d=\"M13 20.5h8\"/><rect x=\"14\" y=\"16.8\" width=\"6\" height=\"3.7\" rx=\".9\"/></svg>", "tasks": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"5\" y=\"4.5\" width=\"14\" height=\"16\" rx=\"2.2\"/><path d=\"M9 3.5h6v2.4H9z\"/><path d=\"m8.3 11.2 1.4 1.4 2.6-2.6\"/><path d=\"M13.6 11.4h2.6\"/><path d=\"m8.3 16 1.4 1.4 2.6-2.6\"/><path d=\"M13.6 16.2h2.6\"/></svg>", "schedule": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3.5\" y=\"5\" width=\"13\" height=\"13\" rx=\"2\"/><path d=\"M3.5 9h13M7.5 3.2v3.4M12.5 3.2v3.4\"/><circle cx=\"17\" cy=\"16.5\" r=\"4\"/><path d=\"M17 14.6v2l1.3.9\"/></svg>", "archive": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3.5\" y=\"4.5\" width=\"17\" height=\"4.3\" rx=\"1.2\"/><path d=\"M5 8.8v10.7h14V8.8\"/><path d=\"M10 12.5h4\"/></svg>", "review": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 6h9M5 10h6M5 14h4\"/><circle cx=\"15.5\" cy=\"14.5\" r=\"3.5\"/><path d=\"m18 17 2.5 2.5\"/></svg>"};
+const navIcons = {"stats": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 20h16\"/><rect x=\"5.5\" y=\"11\" width=\"3\" height=\"6.5\" rx=\"1\"/><rect x=\"10.5\" y=\"7\" width=\"3\" height=\"10.5\" rx=\"1\"/><rect x=\"15.5\" y=\"3.5\" width=\"3\" height=\"14\" rx=\"1\"/></svg>", "settings": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z\"/></svg>", "home": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3.5 10.5 12 3.8l8.5 6.7\"/><path d=\"M5.5 9v10.2h13V9\"/><path d=\"M10 19.2v-5.4h4v5.4\"/></svg>", "gavel": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"9.2\" y=\"2.8\" width=\"6\" height=\"9\" rx=\"1.3\" transform=\"rotate(45 12.2 7.3)\"/><path d=\"m11 10.8-6.6 6.6\"/><path d=\"M13 20.5h8\"/><rect x=\"14\" y=\"16.8\" width=\"6\" height=\"3.7\" rx=\".9\"/></svg>", "tasks": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"5\" y=\"4.5\" width=\"14\" height=\"16\" rx=\"2.2\"/><path d=\"M9 3.5h6v2.4H9z\"/><path d=\"m8.3 11.2 1.4 1.4 2.6-2.6\"/><path d=\"M13.6 11.4h2.6\"/><path d=\"m8.3 16 1.4 1.4 2.6-2.6\"/><path d=\"M13.6 16.2h2.6\"/></svg>", "schedule": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3.5\" y=\"5\" width=\"13\" height=\"13\" rx=\"2\"/><path d=\"M3.5 9h13M7.5 3.2v3.4M12.5 3.2v3.4\"/><circle cx=\"17\" cy=\"16.5\" r=\"4\"/><path d=\"M17 14.6v2l1.3.9\"/></svg>", "archive": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"3.5\" y=\"4.5\" width=\"17\" height=\"4.3\" rx=\"1.2\"/><path d=\"M5 8.8v10.7h14V8.8\"/><path d=\"M10 12.5h4\"/></svg>", "review": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 6h9M5 10h6M5 14h4\"/><circle cx=\"15.5\" cy=\"14.5\" r=\"3.5\"/><path d=\"m18 17 2.5 2.5\"/></svg>"};
 const icons = {dashboard:'⌂',cases:'▤',tasks:'☷',poster:'▧',bell:'◌',plus:'＋',refresh:'↻',check:'✓',edit:'✎',eye:'◉',close:'✕',download:'↓',logout:'↪',shield:'◇',calendar:'▦'};
 const actorId=()=>state.user?.id||state.profile?.id||'';
 const realJudge=()=>state.profile?.role==='judge';
@@ -180,14 +180,14 @@ function caseStageTitle(c){
 const listForDate=()=>state.cases.filter(c=>c.session_date===state.filterDate).sort((a,b)=>String(a.session_time).localeCompare(String(b.session_time)));
 const filteredCases=()=>listForDate().filter(c=>(state.stageFilter==='all'||c.status===state.stageFilter)&&[c.case_number,c.plaintiffs,c.defendants,c.case_type,c.claim_summary].some(v=>latinDigits(v).includes(state.search)));
 const profileName=(id)=>state.profiles.find(p=>p.id===id)?.display_name||'الاسم غير متاح';
-function navigate(screen,taskId=null){if(screen==='diwan'&&(!canShowDiwan(state)||state.viewAs))return;if(screen==='review'&&isJudge())screen='dashboard';if(screen==='review')loadReview();state.screen=screen;state.focusedTaskId=taskId;if(screen!=='submission')state.submission=null;state.showNotifs=false;render();window.scrollTo({top:0,behavior:'smooth'});}
+function navigate(screen,taskId=null){if(screen==='diwan'&&(!canShowDiwan(state)||state.viewAs))return;if(screen==='review'&&isJudge())screen='dashboard';if(screen==='stats'&&!isJudge())screen='dashboard';if(screen==='stats')void loadStats(true);if(screen==='review')loadReview();state.screen=screen;state.focusedTaskId=taskId;if(screen!=='submission')state.submission=null;state.showNotifs=false;render();window.scrollTo({top:0,behavior:'smooth'});}
 const organizerPasskeyButton='<button type="button" class="icon-button" aria-label="مفتاح مرور المنظّم" title="مفتاح مرور المنظّم" data-action="organizer-passkey-settings">🔑</button>';
 let shellEntered=false,dataRevealed=false;
 function bootSkeleton(){return `<div class="boot-skeleton" aria-busy="true" aria-label="جارٍ تحميل البيانات">${'<div class="sk-card"><span></span><span></span><span></span></div>'.repeat(4)}</div>`;}
 function shell(){
  const n=state.unreadCount??0;
  // «مراجعة جلسات اليوم» للموظفين فقط؛ لا تظهر للقاضي.
- const nav=[['dashboard','الرئيسية',navIcons.home],['cases','الجلسات',navIcons.gavel],...(isJudge()?[]:[['review','مراجعة جلسات اليوم',navIcons.review]]),['tasks','المهام والمتابعة',navIcons.tasks],['hearings','توزيع الجلسات',navIcons.schedule]];
+ const nav=[['dashboard','الرئيسية',navIcons.home],['cases','الجلسات',navIcons.gavel],...(isJudge()?[]:[['review','مراجعة جلسات اليوم',navIcons.review]]),['tasks','المهام والمتابعة',navIcons.tasks],['hearings','توزيع الجلسات',navIcons.schedule],...(isJudge()?[['stats','الإحصائيات',navIcons.stats]]:[])];
  // ديوان القضايا للقاضي وحده؛ ولا يظهر حتى في «عرض بعين الموظف».
  const diwanAccess=canShowDiwan(state)&&!state.viewAs;
  if(diwanAccess)nav.push(['diwan','ديوان القضايا',navIcons.archive]);
@@ -204,7 +204,7 @@ function shell(){
   <div class="content">${inDiwan?'':`<nav class="service-tiles" aria-label="أقسام الدائرة">
    ${nav.map(([key,label,icon])=>`<button class="service-tile ${currentSection===key?'active':''}" data-nav="${key}"${navCurrent(key)}><span class="tile-symbol" aria-hidden="true">${icon}</span><span>${label}</span></button>`).join('')}
   </nav>`}${DEMO?`<div class="banner"><strong>واجهة تجريبية فارغة — الحفظ محلي حاليًا</strong>لا يوجد اتصال بقاعدة بيانات مشتركة بعد؛ ما يُحفظ هنا يبقى على هذا الجهاز فقط. يرجى عدم إدخال محاضر أو بيانات قضايا حقيقية حتى اكتمال الربط الآمن.</div>`:''}
-  ${state.booting?bootSkeleton():state.screen==='submission'?submissionPage():state.screen==='dashboard'?dashboard():state.screen==='tasks'?tasksPage():state.screen==='review'?reviewPage():state.screen==='hearings'?'<div id="hearings-slot"></div>':inDiwan?'<section id="diwan-slot" aria-label="ديوان القضايا"></section>':sessionsPage()}</div></main></div>${state.editorId!==null?editorModal():''}${state.detailId!==null?detailModal():''}${state.taskEditorId!==null?taskEditor():''}${bulkEntry?bulkEditor():''}${state.settingsOpen&&!state.viewAs?settingsModal():''}`;
+  ${state.booting?bootSkeleton():state.screen==='submission'?submissionPage():state.screen==='dashboard'?dashboard():state.screen==='tasks'?tasksPage():state.screen==='review'?reviewPage():state.screen==='stats'&&isJudge()?statsPage():state.screen==='hearings'?'<div id="hearings-slot"></div>':inDiwan?'<section id="diwan-slot" aria-label="ديوان القضايا"></section>':sessionsPage()}</div></main></div>${state.editorId!==null?editorModal():''}${state.detailId!==null?detailModal():''}${state.taskEditorId!==null?taskEditor():''}${bulkEntry?bulkEditor():''}${state.settingsOpen&&!state.viewAs?settingsModal():''}`;
 }
 const senderNames=new Set(['يحيى محمد إبراهيم بكري','عبد الرحمن يحيى علي الشريف']);
 const isSubmissionSender=()=>!DEMO&&state.profile?.role==='secretary'&&senderNames.has(state.profile.display_name);
@@ -498,7 +498,7 @@ function dashboard(){
  const pending=state.tasks.filter(t=>myAssignment(t)&&!myAssignment(t).executed_at);
  const urgent=pending.filter(t=>t.priority==='urgent');
  return `<div class="welcome-banner"><div><span class="hero-kicker">لوحة تنظيم العمل</span><h1>كل أعمال الدائرة في مكان واحد</h1><p>قضايا الجلسات، ومحاضرها، والمهام الواردة من الكتّاب وأمناء السر؛ تُراجع وتُنجز من لوحة واحدة.</p><div class="hero-date">◷ ${hijriLong(state.filterDate)}</div></div><div class="hero-deco" aria-hidden="true"><span></span><span></span><span></span><span></span></div></div>
- <div class="stats">${stat('قضايا اليوم المحدد',all.length,'بحسب جدول الجلسات','▤')}${(()=>{const rc=dayApproval(state.filterDate);const who=rc?String(rc.confirmed_by_name||'').split(' ').filter((w,i,a)=>i===0||i===a.length-1).join(' '):'';return stat('قضايا معتمدة',rc?all.length:0,rc?`اعتمدها ${who}`:'بانتظار اعتماد الموظف','✓');})()}${stat('مهام قيد الإنجاز',pending.length,urgent.length+' منها عاجلة','☷')}</div>
+ <div class="stats">${stat('قضايا اليوم المحدد',all.length,'بحسب جدول الجلسات','▤')}${(()=>{const rc=dayApproval(state.filterDate);const who=rc?shortName(rc.confirmed_by_name||''):'';return stat('قضايا معتمدة',rc?all.length:0,rc?`اعتمدها ${who}`:'بانتظار اعتماد الموظف','✓');})()}${stat('مهام قيد الإنجاز',pending.length,urgent.length+' منها عاجلة','☷')}</div>
  <div class="dashboard-columns"><section class="dashboard-main"><div class="section-head"><div><span class="section-eyebrow">جلسات الدائرة</span><h2>قضايا اليوم المختار</h2></div><div class="section-actions"><span class="date-heading">اليوم الهجري:</span>${workdaySelect(state.filterDate,'data-filter-date','تصفية القضايا حسب يوم العمل')}<div class="case-entry-actions"><button class="btn btn-primary" data-action="new-case">＋ إضافة قضية</button></div></div></div>
  ${memorySearchBox()}${previousSessionsPicker()}${dayTabs()}<div class="cases-list">${dayCasesList(all,emptyState())}</div><div class="compact-actions"><button class="btn btn-soft" data-nav="cases">عرض جميع القضايا ←</button><button class="btn btn-soft" data-nav="poster">حفظ تقرير الجلسات كصورة ↓</button></div></section>
  <aside class="dashboard-side"><div class="card aside-card"><div class="side-card-title"><div><span class="section-eyebrow">مهام ومتابعة</span><h3>المطلوب إنجازه</h3></div><button class="btn btn-primary add-task-button" type="button" data-action="new-task">＋ إضافة مهمة</button></div>${pending.length?pending.slice(0,5).map(taskCardMini).join(''):'<div class="mini-empty">لا توجد مهام معلّقة حاليًا.</div>'}<button class="text-button side-more" data-nav="tasks">فتح قائمة المتابعة ←</button></div>
@@ -745,6 +745,72 @@ function insightPage(){
  </div>`;
 }
 
+// ================= الإحصائيات (للقاضي) =================
+let statsData=null,statsLoading=false;
+async function loadStats(force=false){
+ if(statsLoading||(!force&&statsData&&Date.now()-statsData._at<120000))return;
+ statsLoading=true;
+ const {data,error}=await state.client.rpc('judge_stats');
+ statsLoading=false;statsData=error?{error:error.message,_at:Date.now()}:{...data,_at:Date.now()};
+ if(state.screen==='stats')render();
+}
+const hijriMonthName=m=>HIJRI_MONTHS[(+m||1)-1]||'';
+const hijriDayText=h=>{const [y,m,d]=String(h||'').split('/');return y?`${+d} ${hijriMonthName(m)} ${y}هـ`:'';};
+const judgWord=n=>n===1?'حكم واحد':n===2?'حكمان':n<=10?`${n} أحكام`:`${n} حكمًا`;
+const fmtN=n=>Number(n||0).toLocaleString('en-US');
+function statTile(color,label,value,sub,extra=''){
+ return `<div class="kpi" style="--acc:${color}"><div class="kpi-label">${label}</div><div class="kpi-value">${value}${extra}</div><div class="kpi-sub">${sub}</div></div>`;
+}
+function ring(pct,color){
+ const r=26,c=2*Math.PI*r,o=c*(1-Math.max(0,Math.min(100,pct))/100);
+ return `<svg class="kpi-ring" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="${r}" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="7"/><circle cx="32" cy="32" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${o.toFixed(1)}" transform="rotate(-90 32 32)"/></svg>`;
+}
+function statsPage(){
+ if(!statsData){void loadStats();return '<div class="eyebrow">إنجازات الدائرة</div><h1 class="heading">الإحصائيات</h1><div class="card empty"><span class="empty-icon load-spin">◌</span><b>جارٍ حساب الإحصائيات…</b></div>';}
+ if(statsData.error)return `<div class="eyebrow">إنجازات الدائرة</div><h1 class="heading">الإحصائيات</h1><div class="card empty"><b>تعذّر تحميل الإحصائيات</b><p>${esc(statsData.error)}</p></div>`;
+ if(Date.now()-statsData._at>120000)void loadStats();
+ const S=statsData,f=S.first||{},hm=S.hijri_month||{},ses=S.sessions||{},ap=S.appeals||{},lc=S.long_cases||{};
+ const perWeek=S.weeks?.n?Math.round(S.weeks.judgments/S.weeks.n):0;
+ // الشهر الحالي مقابل نفس الفترة من الشهر الماضي
+ const diff=(f.this_month||0)-(f.prev_same||0);
+ const pace=diff>0?`<span class="kpi-delta up">▲ ${diff}</span>`:diff<0?`<span class="kpi-delta down">▼ ${-diff}</span>`:'';
+ const paceSub=`حتى اليوم ${hm.day} · الشهر الماضي في نفس الفترة ${f.prev_same||0}`;
+ // الاستئناف
+ const aff=ap['تأييد']||0,nq=ap['نقض']||0,pq=ap['جزئي']||0,fm=ap['شكلي']||0,subst=aff+nq+pq,affPct=subst?Math.round(aff*100/subst):0;
+ // الأشهر
+ const months=S.months||[],mMax=Math.max(1,...months.map(x=>x.n));
+ const cur=`${hm.y}/${String(hm.m).padStart(2,'0')}`;
+ const monthBars=months.map(x=>{const [y,m]=x.m.split('/');const now=x.m===cur;return `<div class="vbar${now?' now':''}" title="${esc(hijriMonthName(m))} ${y}هـ: ${judgWord(x.n)}${now?' حتى الآن':''}"><b>${x.n}</b><i style="--h:${(x.n*100/mMax).toFixed(1)}%"></i><small>${esc(hijriMonthName(m))}</small>${now?'<em>حتى الآن</em>':''}</div>`;}).join('');
+ // التصنيفات
+ const cats=S.categories||[],top=cats.slice(0,7),rest=cats.slice(7),restN=rest.reduce((s,x)=>s+x.n,0),cMax=Math.max(1,...top.map(x=>x.n),restN);
+ const catRows=[...top,...(rest.length?[{c:`تصنيفات أخرى (${rest.length})`,n:restN,other:true}]:[])].map(x=>`<div class="hbar${x.other?' other':''}" title="${esc(x.c)}: ${judgWord(x.n)}"><span>${esc(x.c)}</span><i><u style="--w:${(x.n*100/cMax).toFixed(1)}%"></u></i><b>${x.n}</b></div>`).join('');
+ // أيام الاعتماد
+ const DAYS=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+ const wd=Object.fromEntries((S.weekdays||[]).map(x=>[x.d,x.n])),wMax=Math.max(1,...Object.values(wd));
+ const wdBars=[6,0,1,2,3,4,5].map(d=>`<div class="vbar small" title="${DAYS[d]}: ${judgWord(wd[d]||0)}"><b>${wd[d]||0}</b><i style="--h:${((wd[d]||0)*100/wMax).toFixed(1)}%"></i><small>${DAYS[d]}</small></div>`).join('');
+ const topDay=Object.entries(wd).sort((a,b)=>b[1]-a[1])[0];
+ // الاستئناف: شريط مكدّس
+ const segs=[['أُيِّد',aff,'#1f9d6b'],['نُقض',nq,'#e34948'],['نُقض جزئيًا',pq,'#eb6834'],['رُدّ شكلًا',fm,'#8a948f']].filter(x=>x[1]>0),aTot=segs.reduce((s,x)=>s+x[1],0)||1;
+ const appealBar=`<div class="stack" role="img" aria-label="نتائج الاستئناف">${segs.map(([l,n,c])=>`<span style="--w:${(n*100/aTot).toFixed(2)}%;--c:${c}" title="${l}: ${n}"></span>`).join('')}</div><div class="legend">${segs.map(([l,n,c])=>`<span><i style="--c:${c}"></i>${l} <b>${n}</b></span>`).join('')}</div>`;
+ const team=(S.team||[]).map(t=>{const nm=shortName(t.who);return `<div class="team-card"><div class="team-av">${esc(nm[0]||'؟')}</div><div><b>${esc(nm)}</b><small>${t.tasks===1?'مهمة واحدة نُفّذت':t.tasks===2?'مهمتان نُفّذتا':t.tasks<=10?`${t.tasks} مهام نُفّذت`:`${t.tasks} مهمة نُفّذت`} · ${t.reviews===0?'لا اعتمادات جلسات بعد':t.reviews===1?'اعتمد جلسات يوم واحد':t.reviews===2?'اعتمد جلسات يومين':`اعتمد جلسات ${t.reviews} أيام`}</small></div></div>`;}).join('');
+ const best=S.best_day;
+ return `<div class="eyebrow">إنجازات الدائرة</div><h1 class="heading">الإحصائيات</h1>
+ <section class="stats-hero"><div><small>أحكام الدرجة الأولى منذ ${esc(hijriDayText(f.since))}</small><strong>${fmtN(f.total)}</strong><span>بمعدل ${judgWord(perWeek)} في الأسبوع${best?` · أعلى يوم ${judgWord(best.n)} في ${esc(hijriDayText(best.h).replace(/\s\d{4}هـ$/,''))}`:''}</span></div><svg viewBox="0 0 120 120" aria-hidden="true"><path d="M60 8l13 27 30 4-22 21 5 30-26-14-26 14 5-30L17 39l30-4z" fill="currentColor" opacity=".9"/></svg></section>
+ <div class="kpis">
+  ${statTile('#2a78d6',`أحكام ${esc(hijriMonthName(hm.m))}`,fmtN(f.this_month),paceSub,pace)}
+  ${statTile('#1baf7a','التأييد في الاستئناف',`${affPct}%`,`${aff} من ${subst} حكمًا (عدا الشكلي)`,ring(affPct,'#1baf7a'))}
+  ${statTile('#6250d6','جلسات هذا الأسبوع',fmtN(ses.this_week),`منها ${ses.week_first||0} أولى · الأسبوع الماضي ${ses.last_week||0}`)}
+  ${statTile('#eb6834','قضايا مطوّلة',fmtN(lc.n),`خمس جلسات فأكثر · أطولها ${lc.max||0} جلسات`)}
+ </div>
+ <div class="stats-grid">
+  <section class="stats-card wide"><h3>الأحكام شهرًا بشهر</h3><div class="vbars">${monthBars}</div></section>
+  <section class="stats-card"><h3>نتائج الاستئناف <small>${aTot} حكمًا</small></h3>${appealBar}${nq+pq?`<p class="stats-note">نُقض ${judgWord(nq+pq)} — دروسها في «مؤشر القضايا».</p>`:''}</section>
+  <section class="stats-card"><h3>أيام اعتماد الأحكام</h3><div class="vbars short">${wdBars}</div>${topDay?`<p class="stats-note">${DAYS[topDay[0]]} يومك الأكثر اعتمادًا: ${judgWord(topDay[1])}.</p>`:''}</section>
+  <section class="stats-card wide"><h3>الأحكام حسب التصنيف</h3><div class="hbars">${catRows}</div></section>
+  ${team?`<section class="stats-card wide"><h3>فريق الدائرة</h3><div class="team">${team}</div></section>`:''}
+ </div>`;
+}
+
 // ================= ورقة الجلسات (للقاضي) =================
 // لكل قضية في اليوم: ما جرى في آخر جلسة، والمطلوب في جلسة اليوم، مع تنبيهات مختصرة. تُطبع ورقة واحدة.
 const normAr=t=>latinDigits(String(t||'')).replace(/[أإآ]/g,'ا');
@@ -788,7 +854,7 @@ function sheetPage(){
  if(!reviewState.loaded)void loadReview();
  const snap=reviewState.snapshots[day],rc=reviewState.recon[day];
  const t=iso=>new Date(iso).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit',timeZone:'Asia/Riyadh'});
- const who=n=>String(n||'').split(' ').filter((w,i,a)=>i===0||i===a.length-1).join(' ');
+ const who=n=>shortName(n||'');
  const recon=!reviewState.loaded||!list.length?'':rc&&snap&&rc.snapshot_fetched_at===snap.fetched_at?`<div class="sheet-recon ok"><span>✓ أكّد ${esc(who(rc.confirmed_by_name))} <span class="tab-full">مطابقة الجلسات مع تقاضي </span>· ${esc(hijriLong(new Date(rc.confirmed_at).toLocaleDateString('en-CA',{timeZone:'Asia/Riyadh'})).replace(/\s*\d{4}\s*هـ$/,''))} · ${esc(t(rc.confirmed_at))}</span><small>${esc(agoWord(rc.confirmed_at))}</small></div>`:!snap?'<div class="sheet-recon">لم تُسحب قائمة هذا اليوم من تقاضي بعد.</div>':'<div class="sheet-recon wait">لم تُؤكَّد مطابقة جلسات هذا اليوم مع تقاضي بعد.</div>';
  return `<div class="sheet">${recon}<div class="sheet-bar">${workdaySelect(day,'data-filter-date','يوم الورقة')}<div class="sheet-kpis">${kpis}</div><button class="btn" data-action="print-sheet">طباعة الورقة</button></div>
  <div class="sheet-print-head"><b>ورقة الجلسات</b><span>${esc(hijriLong(day))}</span></div>
@@ -921,6 +987,8 @@ function dayCasesList(list,empty){
  ${next.map(c=>caseRow(c)).join('')||'<p class="hint">انتهت جلسات اليوم.</p>'}`;
 }
 // اعتماد اليوم = تأكيد موظف (يحيى/الشريف) مطابقة جلسات ذلك اليوم مع تقاضي، وما زالت القائمة لم تتغير بعده.
+// «يحيى بكري»، «عبدالرحمن الشريف»
+function shortName(n){const w=String(n||'').trim().split(/\s+/).filter(Boolean);if(!w.length)return '';let first=w[0],i=1;if(/^(عبد|أبو|ابو)$/.test(first)&&w[1]){first+=w[1];i=2;}return w.length>i?`${first} ${w[w.length-1]}`:first;}
 function dayApproval(date){
  if((!reviewState.loaded||Date.now()-(reviewState.at||0)>120000)&&!reviewState.loading&&!DEMO&&state.client){reviewState.loading=true;void loadReview().finally(()=>{reviewState.loading=false;render();});}
  const sn=reviewState.snapshots[date],rc=reviewState.recon[date];
@@ -929,7 +997,7 @@ function dayApproval(date){
 function approvalBadge(date){
  const rc=dayApproval(date);
  if(!rc)return '<span class="badge ready" title="لم يعتمد الموظف مطابقة جلسات هذا اليوم بعد">بانتظار الاعتماد</span>';
- const who=String(rc.confirmed_by_name||'').split(' ').filter((w,i,a)=>i===0||i===a.length-1).join(' ');
+ const who=shortName(rc.confirmed_by_name||'');
  return `<span class="badge approved" title="اعتمدها ${esc(who)} · ${esc(stamp(rc.confirmed_at))}">✓ معتمدة</span>`;
 }
 function caseRow(c){const item=priorOutcome(c);return `<article class="case-row" data-case-session-time="${esc(c.session_time)}"><div class="case-time-slot"><div class="time-pill">${esc(tm(c.session_time))}</div><span class="current-session-label" hidden>موعدها الآن</span></div><div class="case-content"><div class="case-title">${esc(c.case_type||'قضية دون تصنيف')} ${approvalBadge(c.session_date)}</div><div class="case-sub"><span>رقم ${caseNumberButton(c.case_number)}</span><span>${esc(short(c.plaintiffs,34))} × ${esc(short(c.defendants,34))}</span>${sessionNumberBadge(c)}${followupBadge(c)}${memoryBadge(c)}<span class="byline">أدخله: ${esc(profileName(c.created_by))}</span></div><div class="case-assignee"><span aria-hidden="true">👤</span> <span data-case-assignee="${esc(c.id)}">${esc(assigneeLabel(c))}</span></div>${item?.outcome?`<div class="case-assignee">${outcomeLabel(item)}: ${esc(item.outcome)}</div>`:''}</div><div class="case-row-actions"><button class="btn btn-small" data-detail="${esc(c.id)}">عرض</button><button class="btn btn-small btn-soft" data-edit="${esc(c.id)}">✎ تعديل</button></div></article>`;}
