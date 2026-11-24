@@ -799,7 +799,7 @@ function statsPage(){
  <div class="kpis">
   ${statTile('#2a78d6',`أحكام ${esc(hijriMonthName(hm.m))}`,fmtN(f.this_month),paceSub,pace)}
   ${statTile('#1baf7a','التأييد في الاستئناف',`${affPct}%`,`${aff} من ${subst} حكمًا (عدا الشكلي)`,ring(affPct,'#1baf7a'))}
-  ${statTile('#6250d6','جلسات هذا الأسبوع',fmtN(ses.this_week),`منها ${ses.week_first||0} أولى · الأسبوع الماضي ${ses.last_week||0}`)}
+  ${statTile('#6250d6','جلسات هذا الأسبوع',fmtN(ses.this_week),`انعقد منها ${ses.week_held??0} · الأسبوع الماضي ${ses.last_week||0}`)}
   ${statTile('#eb6834','قضايا مطوّلة',fmtN(lc.n),`خمس جلسات فأكثر · أطولها ${lc.max||0} جلسات`)}
  </div>
  <div class="stats-grid">
