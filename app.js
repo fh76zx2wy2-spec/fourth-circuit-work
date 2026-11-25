@@ -84,6 +84,7 @@ function refreshDisplayWorkday(){
 const displayDays=()=>[...new Set([displayedWorkday,todayRiyadh(),...fiveWorkdays()])].filter(day=>![5,6].includes(new Date(day+'T12:00:00Z').getUTCDay()));
 function previousSessionsPicker(){
  const days=[...new Set(state.cases.map(c=>c.session_date).filter(date=>date<displayedWorkday))].sort().reverse();
+ if(!days.length&&!isJudge())return '';
  return `<select class="field workday-select" data-previous-sessions aria-label="عرض الجلسات السابقة"><option value="">عرض الجلسات السابقة</option>${days.map(date=>`<option value="${esc(date)}" ${state.historyDate===date?'selected':''}>${esc(hijriLong(date))}</option>`).join('')}</select>`;
 }
 const dayWithinWindow=(day)=>fiveWorkdays().includes(day);
