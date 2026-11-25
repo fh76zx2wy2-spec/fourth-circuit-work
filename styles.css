@@ -768,3 +768,15 @@ html[data-theme="dark"] .lc-n{color:#f0925f}html[data-theme="dark"] .lc-done{col
 .time-end{display:block;margin-top:-2px;font-size:11px;color:var(--muted,#6b7a76);text-align:center;white-space:nowrap}
 /* إطار القضية المنظورة الآن — يعلو على النمط الزجاجي */
 .circuit-app .case-row.case-session-current,html:not(.classic) .circuit-app .case-row.case-session-current{border:1.5px solid var(--green)!important;background-color:var(--green-bg)!important;box-shadow:inset 0 0 0 1px var(--green),0 6px 18px rgba(12,136,109,.14)!important}
+.leave-card .leave-list{list-style:none;margin:6px 0 4px;padding:0;display:grid;gap:8px}
+.leave-card .leave-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;background:var(--green-bg,#eef7f3)}
+.leave-card .leave-list li span{font-size:14px;line-height:1.6}
+.leave-mine{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0 8px}
+.leave-mine b{font-size:13.5px;margin-inline-end:4px}
+.leave-mine small{color:var(--muted)}
+.leave-chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:#fff}
+.leave-chip button{border:0;background:none;color:var(--muted);cursor:pointer;font-size:12px;padding:0}
+.leave-form{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:13.5px}
+.leave-form input{font:inherit;padding:5px 8px;border:1px solid var(--border);border-radius:10px;background:#fff}
+.leave-alert{margin:8px 0;padding:8px 12px;border-radius:10px;background:#fbeedd;color:#8a4b12;font-size:13.5px}
+.leave-banner{margin:10px 0;padding:10px 14px;border-radius:12px;background:#fbeedd;color:#8a4b12;font-weight:600;text-align:center}

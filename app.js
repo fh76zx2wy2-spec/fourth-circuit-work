@@ -506,7 +506,7 @@ function dashboard(){
  return `<div class="welcome-banner"><div><span class="hero-kicker">لوحة تنظيم العمل</span><h1>كل أعمال الدائرة في مكان واحد</h1><p>قضايا الجلسات، ومحاضرها، والمهام الواردة من الكتّاب وأمناء السر؛ تُراجع وتُنجز من لوحة واحدة.</p><div class="hero-date">◷ ${hijriLong(state.filterDate)}</div></div><div class="hero-deco" aria-hidden="true"><span></span><span></span><span></span><span></span></div></div>
  <div class="stats">${stat('قضايا اليوم المحدد',all.length,'بحسب جدول الجلسات','▤')}${(()=>{const rc=dayApproval(state.filterDate);const who=rc?shortName(rc.confirmed_by_name||''):'';return stat('قضايا معتمدة',rc?all.length:0,rc?`اعتمدها ${who}`:'بانتظار اعتماد الموظف','✓');})()}${stat('مهام قيد الإنجاز',pending.length,urgent.length+' منها عاجلة','☷')}</div>
  <div class="dashboard-columns"><section class="dashboard-main"><div class="section-head"><div><span class="section-eyebrow">جلسات الدائرة</span><h2>قضايا اليوم المختار</h2></div><div class="section-actions"><span class="date-heading">اليوم الهجري:</span>${workdaySelect(state.filterDate,'data-filter-date','تصفية القضايا حسب يوم العمل')}<div class="case-entry-actions"><button class="btn btn-primary" data-action="new-case">＋ إضافة قضية</button></div></div></div>
- ${memorySearchBox()}${previousSessionsPicker()}${dayTabs()}<div class="cases-list">${dayCasesList(all,emptyState())}</div><div class="compact-actions"><button class="btn btn-soft" data-nav="cases">عرض جميع القضايا ←</button><button class="btn btn-soft" data-nav="poster">حفظ تقرير الجلسات كصورة ↓</button></div></section>
+ ${memorySearchBox()}${previousSessionsPicker()}${dayTabs()}${isJudge()?(void loadLeavePlan(),onLeave(state.filterDate)?'<div class="leave-banner">🏝 هذا اليوم ضمن إجازتك</div>':''):''}<div class="cases-list">${dayCasesList(all,emptyState())}</div><div class="compact-actions"><button class="btn btn-soft" data-nav="cases">عرض جميع القضايا ←</button><button class="btn btn-soft" data-nav="poster">حفظ تقرير الجلسات كصورة ↓</button></div></section>
  <aside class="dashboard-side"><div class="card aside-card"><div class="side-card-title"><div><span class="section-eyebrow">مهام ومتابعة</span><h3>المطلوب إنجازه</h3></div><button class="btn btn-primary add-task-button" type="button" data-action="new-task">＋ إضافة مهمة</button></div>${pending.length?pending.slice(0,5).map(taskCardMini).join(''):'<div class="mini-empty">لا توجد مهام معلّقة حاليًا.</div>'}<button class="text-button side-more" data-nav="tasks">فتح قائمة المتابعة ←</button></div>
  </aside></div><p class="footer-note">التقرير يستند إلى ما أدخله أمناء السر من تقاضي؛ والمقتطف آلي أولي، ولا يغني عن الضبط الأصلي.</p>`;
 }
@@ -779,6 +779,60 @@ function longCard(L){
  <div class="lc-cols"><div><h4>قائمة <span>${(L.open||[]).length}</span></h4><ul>${open||'<li class="muted">لا توجد</li>'}</ul></div><div><h4>انتهت <span>${(L.done||[]).length}</span></h4><ul>${done||'<li class="muted">لم تنته قضية مطوّلة بعد</li>'}</ul></div></div>
  <p class="stats-note">تُعدّ القضية منتهية عند أرشفة حكمها أو تسجيل الحكم في ضبط الجلسة. «بلا موعد قادم» تستحق التحقق.</p></section>`;
 }
+
+// ================= تخطيط الإجازة (للقاضي فقط) =================
+let leavePlan=null,leaveLoading=false;
+async function loadLeavePlan(force=false){
+ if(!isJudge()||leaveLoading||(!force&&leavePlan&&Date.now()-leavePlan._at<120000))return;
+ if(DEMO){leavePlan={days:[],leaves:[],_at:Date.now()};return;}
+ leaveLoading=true;
+ const [p,l]=await Promise.all([state.client.rpc('judge_leave_plan'),state.client.from('judge_leaves').select('*').order('start_date')]);
+ leaveLoading=false;leavePlan={...(p.data||{}),leaves:l.data||[],error:p.error?.message||l.error?.message,_at:Date.now()};
+ if(state.screen==='stats'||state.screen==='cases')render();
+}
+const leaveDay=iso=>{try{return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura',{numberingSystem:'latn',weekday:'long',day:'numeric',month:'long',timeZone:'UTC'}).format(new Date(`${iso}T12:00:00Z`));}catch{return iso;}};
+const leaveAddDays=(iso,n)=>{const d=new Date(`${iso}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+const onLeave=iso=>isJudge()&&(leavePlan?.leaves||[]).some(l=>iso>=l.start_date&&iso<=l.end_date);
+function leaveSuggestions(){
+ const days=(leavePlan?.days||[]).filter(x=>!x.leave&&!x.hol),out=[];
+ const dow=iso=>new Date(`${iso}T12:00:00Z`).getUTCDay();
+ const booked=days.filter(x=>x.n>=3),horizon=booked.length?booked.at(-1).d:null;
+ // خلال الأيام المحجوزة: أخف خميس أو أحد
+ const light=days.filter(x=>horizon&&x.d<=horizon&&[0,4].includes(dow(x.d))&&x.n<=6).sort((a,b)=>a.n-b.n)[0];
+ if(light)out.push({s:light.d,e:light.d,t:`${leaveDay(light.d)} فيه ${light.n} ${light.n<=10&&light.n>=3?'جلسات':'جلسة'} فقط؛ ${dow(light.d)===4?'إجازته مع نهاية الأسبوع':'إجازته بعد نهاية الأسبوع'} تمنحك 3 أيام راحة.`});
+ // بعد آخر يوم محجوز: الأيام فاضية
+ const free=days.filter(x=>(!horizon||x.d>horizon)&&x.n===0);
+ const thu=free.find(x=>dow(x.d)===4);
+ if(thu)out.push({s:thu.d,e:thu.d,t:`${leaveDay(thu.d)} لا جلسات فيه حتى الآن؛ إجازته مع نهاية الأسبوع تمنحك 3 أيام راحة.`});
+ const week=free.find(x=>dow(x.d)===0&&[1,2,3,4].every(k=>free.some(y=>y.d===leaveAddDays(x.d,k))));
+ if(week)out.push({s:week.d,e:leaveAddDays(week.d,4),t:`أسبوع ${leaveDay(week.d)} خالٍ بالكامل؛ خمسة أيام إجازة تمنحك 9 أيام راحة.`});
+ return {out,horizon};
+}
+function leaveCard(){
+ if(!isJudge())return '';
+ if(!leavePlan){void loadLeavePlan();return '<section class="stats-card wide leave-card"><h3>تخطيط الإجازة</h3><p class="stats-note">جارٍ التحليل…</p></section>';}
+ if(leavePlan.error)return `<section class="stats-card wide leave-card"><h3>تخطيط الإجازة</h3><p class="stats-note">${esc(leavePlan.error)}</p></section>`;
+ const {out,horizon}=leaveSuggestions(),leaves=leavePlan.leaves||[],conf=leavePlan.conflicts||[];
+ const range=l=>l.start_date===l.end_date?leaveDay(l.start_date):`${leaveDay(l.start_date)} – ${leaveDay(l.end_date)}`;
+ return `<section class="stats-card wide leave-card"><h3>تخطيط الإجازة <small>لك وحدك</small></h3>
+  ${out.length?`<ul class="leave-list">${out.map(x=>`<li><span>${esc(x.t)}</span><button class="btn btn-small btn-soft" data-leave-add="${x.s}|${x.e}">تسجيلها</button></li>`).join('')}</ul>`:'<p class="stats-note">لا توجد أيام مناسبة واضحة في الأسابيع القادمة.</p>'}
+  ${horizon?`<p class="stats-note">الجلسات محجوزة حتى ${esc(leaveDay(horizon))}، وما بعده ما زال فارغًا في تقاضي؛ الأفضل تحديد الإجازة قبل أن تُحجز فيه مواعيد.</p>`:''}
+  ${conf.length?`<p class="leave-alert">⚠ ${conf.length===1?'جلسة محجوزة':`${conf.length} جلسات محجوزة`} في أيام إجازتك: ${conf.slice(0,4).map(c=>esc(c.case)+' ('+esc(leaveDay(c.d))+')').join('، ')}</p>`:''}
+  <div class="leave-mine"><b>إجازاتي</b>${leaves.length?leaves.map(l=>`<span class="leave-chip">${esc(range(l))}<button aria-label="حذف" data-leave-del="${esc(l.id)}">✕</button></span>`).join(''):'<small>لا توجد إجازة مسجلة.</small>'}</div>
+  <form class="leave-form" data-leave-form><label>من <input type="date" name="s" required></label><label>إلى <input type="date" name="e" required></label><button class="btn btn-small btn-primary" type="submit">إضافة إجازة</button></form>
+  <p class="stats-note">يصلك تذكير قبل الإجازة بأسبوعين وبثلاثة أيام، وتنبيه فوري إذا حُجزت جلسة في أيامها.</p>
+ </section>`;
+}
+async function addLeave(s1,e1){
+ if(!isJudge()||!s1||!e1||e1<s1)return notify('تحقق من تاريخ البداية والنهاية.','error');
+ const {error}=await state.client.from('judge_leaves').insert({start_date:s1,end_date:e1});
+ if(error)return notify('تعذّر حفظ الإجازة: '+error.message,'error');
+ notify('سُجلت الإجازة.','success');await loadLeavePlan(true);
+}
+async function deleteLeave(id){
+ if(!isJudge())return;const {error}=await state.client.from('judge_leaves').delete().eq('id',id);
+ if(error)return notify('تعذّر الحذف: '+error.message,'error');await loadLeavePlan(true);
+}
 function statsPage(){
  if(!statsData){void loadStats();return '<div class="eyebrow">إنجازات الدائرة</div><h1 class="heading">الإحصائيات</h1><div class="card empty"><span class="empty-icon load-spin">◌</span><b>جارٍ حساب الإحصائيات…</b></div>';}
  if(statsData.error)return `<div class="eyebrow">إنجازات الدائرة</div><h1 class="heading">الإحصائيات</h1><div class="card empty"><b>تعذّر تحميل الإحصائيات</b><p>${esc(statsData.error)}</p></div>`;
@@ -817,6 +871,7 @@ function statsPage(){
   ${statTile('#eb6834','قضايا مطوّلة قائمة',fmtN((S.long?.open||[]).length),`انتهى ${S.long?.ended||0} من ${S.long?.total||0} · خمس جلسات فأكثر`)}
  </div>
  <div class="stats-grid">
+  ${leaveCard()}
   ${longCard(S.long)}
   <section class="stats-card wide"><h3>الأحكام شهرًا بشهر</h3><div class="vbars">${monthBars}</div></section>
   <section class="stats-card"><h3>نتائج الاستئناف <small>${aTot} حكمًا</small></h3>${appealBar}${nq+pq?`<p class="stats-note">نُقض ${judgWord(nq+pq)} — دروسها في «مؤشر القضايا».</p>`:''}</section>
@@ -1059,7 +1114,7 @@ function sessionsPage(){
   <button type="button" data-nav="poster" class="${report?'active':''}" aria-pressed="${report}">تصميم التقرير</button>
  </div>${report?posterPage():casesPage()}`;
 }
-function casesPage(){const judgeView={insight:insightPage,sheet:sheetPage,weekly:weeklyPage}[isJudge()&&state.casesView];if(judgeView)return `<div class="eyebrow">السجل المشترك للقضايا</div><h1 class="heading">جدول القضايا والجلسات</h1>${casesViewTabs()}${judgeView()}`;return `<div class="eyebrow">السجل المشترك للقضايا</div><h1 class="heading">جدول القضايا والجلسات</h1><p class="subheading">إضافة وتعديل وحفظ بيانات الجلسات مع الاحتفاظ بسجل التعديلات.</p>${casesViewTabs()}<div class="filters">${workdaySelect(state.filterDate,'data-filter-date','تصفية القضايا حسب يوم العمل')}<input type="search" class="search" data-search placeholder="ابحث برقم القضية أو بأحد أطرافها..." value="${esc(state.search)}"/><div class="case-entry-actions"><button class="btn btn-primary" data-action="new-case">＋ إضافة قضية</button></div></div>${memorySearchBox()}${previousSessionsPicker()}${dayTabs()}<div class="cases-list">${dayCasesList(filteredCases(),emptyState())}</div>`;}
+function casesPage(){const judgeView={insight:insightPage,sheet:sheetPage,weekly:weeklyPage}[isJudge()&&state.casesView];if(judgeView)return `<div class="eyebrow">السجل المشترك للقضايا</div><h1 class="heading">جدول القضايا والجلسات</h1>${casesViewTabs()}${judgeView()}`;return `<div class="eyebrow">السجل المشترك للقضايا</div><h1 class="heading">جدول القضايا والجلسات</h1><p class="subheading">إضافة وتعديل وحفظ بيانات الجلسات مع الاحتفاظ بسجل التعديلات.</p>${casesViewTabs()}<div class="filters">${workdaySelect(state.filterDate,'data-filter-date','تصفية القضايا حسب يوم العمل')}<input type="search" class="search" data-search placeholder="ابحث برقم القضية أو بأحد أطرافها..." value="${esc(state.search)}"/><div class="case-entry-actions"><button class="btn btn-primary" data-action="new-case">＋ إضافة قضية</button></div></div>${memorySearchBox()}${previousSessionsPicker()}${dayTabs()}${isJudge()?(void loadLeavePlan(),onLeave(state.filterDate)?'<div class="leave-banner">🏝 هذا اليوم ضمن إجازتك</div>':''):''}<div class="cases-list">${dayCasesList(filteredCases(),emptyState())}</div>`;}
 function posterPage(){
  const cases=listForDate().filter(x=>!state.posterApprovedOnly||x.status==='approved');
  return `<div class="eyebrow">تقرير جاهز للمشاركة</div><h1 class="heading">تصميم تقرير الجلسات</h1><p class="subheading">اختر أحد أيام العمل الخمسة، وصدّر تقرير ذلك اليوم كصورة.</p><div class="poster-controls">${workdaySelect(state.filterDate,'data-filter-date','اختيار يوم التقرير')}<label class="pill"><input type="checkbox" data-approved-only ${state.posterApprovedOnly?'checked':''} /> المعتمدة فقط</label>${isJudge()?`<button class="btn btn-accent" data-action="approve-report" ${!cases.length||listForDate().some(c=>c.status!=='approved')?'disabled':''}>✓ ${isReportApproved()?'التقرير معتمد':'اعتماد التقرير'}</button>`:''}<button class="btn btn-primary" data-action="export-png" ${!cases.length?'disabled':''}>↓ حفظ التصميم كصورة PNG</button><button class="btn" data-action="share-png" ${!cases.length?'disabled':''}>↗ مشاركة الصورة</button></div><div class="report-status">${isReportApproved()?'✓ التقرير معتمد':'◇ التقرير بانتظار الاعتماد'} · ${esc(state.profile?.display_name||'')}</div><div class="poster-page"><div class="poster-head"><div><h2>تنظيم أعمال الدائرة الرابعة</h2><p>تقرير القضايا حسب يوم العمل</p></div><div style="font-size:31px;color:var(--brown)">▦</div></div><div class="poster-banner"><span>${hijriLong(state.filterDate)}</span><span>${cases.length} قضايا</span></div>${cases.length?cases.map((c,i)=>{const m=minutesExtract(c);return `<div class="poster-row"><div class="status-line"><h3>${i+1}. ${esc(c.case_type||'قضية')} — ${esc(tm(c.session_time))}</h3><span class="badge ${esc(c.status)}">${statusTitle(c.status)}</span></div><p class="poster-info">رقم القضية ${caseNumberButton(c.case_number)} | ${caseStageTitle(c)} | ${esc(short(c.plaintiffs,45))} × ${esc(short(c.defendants,45))} | أدخلها: ${esc(profileName(c.created_by))}</p><div class="poster-line"><strong>موضوع الدعوى:</strong> ${esc(pii(c.claim_summary)||'غير مدخل')}</div><div class="poster-line"><strong>مقتطف من الضبط السابق:</strong> ${esc(m.overview)}</div>${m.evidence?`<div class="poster-line"><strong>العبارة المتعلقة برفع الجلسة:</strong> ${esc(m.evidence)}</div>`:''}</div>`;}).join(''):'<p class="hint">لا توجد قضايا للعرض في اليوم المختار.</p>'}<div class="poster-footer">المقتطف مستخرج آليًا للمراجعة من النص الأصلي، ولا يغني عنه.</div></div><p class="footer-note">تحتوي الصورة على بيانات القضايا؛ لا تُشارك إلا بالطرق المصرح بها.</p>`;
@@ -2630,6 +2685,8 @@ function showHearings(){
   hearingsContainer.textContent='تعذّر فتح توزيع الجلسات. اختر القسم مجددًا للمحاولة.';
  });
 }
+document.addEventListener('submit',e=>{const f=e.target.closest?.('[data-leave-form]');if(!f)return;e.preventDefault();void addLeave(f.elements.s.value,f.elements.e.value);});
+document.addEventListener('click',e=>{const a=e.target.closest?.('[data-leave-add]');if(a){const [x,y]=a.dataset.leaveAdd.split('|');void addLeave(x,y);return;}const d=e.target.closest?.('[data-leave-del]');if(d&&confirm('حذف هذه الإجازة؟'))void deleteLeave(d.dataset.leaveDel);});
 document.addEventListener('change',e=>{const jp=e.target.closest?.('[data-judge-pref]');if(jp&&!state.viewAs)void saveJudgePref(jp.dataset.judgePref,jp.checked);const cs=e.target.closest?.('[data-circuit-setting]');if(cs&&!state.viewAs&&isJudge())void saveCircuitSetting(cs.dataset.circuitSetting,cs.checked);});
 window.addEventListener('hashchange',openNotificationLink);
 if(location.hash==='#hearings')state.screen='hearings';

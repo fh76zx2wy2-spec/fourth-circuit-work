@@ -469,6 +469,13 @@ html[data-theme="dark"] .settings-link:hover{border-color:var(--brown)}
 html[data-theme="dark"] .settings-link.danger{color:#d4968c}
 html[data-theme="dark"] .time-end{color:var(--muted,#a3aeab)}
 html[data-theme="dark"] .circuit-app .case-row.case-session-current,html[data-theme="dark"]:not(.classic) .circuit-app .case-row.case-session-current{border:1.5px solid var(--green)!important;background-color:var(--green-bg)!important}
+html[data-theme="dark"] .leave-card .leave-list li{background:var(--green-bg,#162b22)}
+html[data-theme="dark"] .leave-mine small{color:var(--muted)}
+html[data-theme="dark"] .leave-chip{border:1px solid var(--border);background:#131817}
+html[data-theme="dark"] .leave-chip button{color:var(--muted)}
+html[data-theme="dark"] .leave-form input{border:1px solid var(--border);background:#131817}
+html[data-theme="dark"] .leave-alert{background:#33281a;color:#dbbda1}
+html[data-theme="dark"] .leave-banner{background:#33281a;color:#dbbda1}
 /* diwan/workspace.css */
 html[data-theme="dark"] #diwan-slot .diwan-page-head p{color:var(--muted)}
 html[data-theme="dark"] #diwan-slot .diwan-status{color:var(--text)}
