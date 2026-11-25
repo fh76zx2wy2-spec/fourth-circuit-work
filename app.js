@@ -1580,6 +1580,12 @@ function viewAsBar(){
  if(!state.viewAs)return '';
  return `<div class="view-as-bar"><span>👁 تعرض الآن بعين: <b>${esc(state.viewAs.display_name)}</b> · العرض فقط</span><button class="btn btn-small" data-view-as-exit>الرجوع إلى حسابي</button></div>`;
 }
+// مثل صلاحيات الموظف في القاعدة: لا قضية قبل يوم العمل (يبدأ 5:00 فجرًا بتوقيت الرياض).
+const staffWorkDay=()=>new Date(Date.now()-2*3600000).toISOString().slice(0,10);
+function applyViewAsCases(){
+ if(state.viewAs){state._allCases??=state.cases;const d=staffWorkDay();state.cases=state._allCases.filter(c=>c.session_date>=d);if(state.historyDate&&state.historyDate<d)state.historyDate=null;}
+ else if(state._allCases){state.cases=state._allCases;state._allCases=null;}
+}
 async function startViewAs(id){
  const p=state.profiles.find(x=>x.id===id);if(!p||!realJudge())return;
  if(!localStorage.getItem(viewAsPinKey())){
@@ -1590,16 +1596,16 @@ async function startViewAs(id){
  }
  state.viewAs={id:p.id,display_name:p.display_name,role:p.role};state.viewAsMenu=false;state.detailId=null;state.casesView='list';
  try{localStorage.setItem(VIEW_AS_KEY,JSON.stringify({owner:state.user?.id||'demo',...state.viewAs}));}catch{}
- memoryFlagsKey='';render();
+ memoryFlagsKey='';applyViewAsCases();if(state.filterDate<staffWorkDay())state.filterDate=displayedWorkday;render();
 }
 async function exitViewAs(){
  const pin=prompt('اكتب رمزك للرجوع إلى حسابك.');if(pin===null)return;
  if(await pinHash(latinDigits(pin))!==localStorage.getItem(viewAsPinKey()))return notify('الرمز غير صحيح.','error');
- state.viewAs=null;try{localStorage.removeItem(VIEW_AS_KEY);}catch{}
+ state.viewAs=null;try{localStorage.removeItem(VIEW_AS_KEY);}catch{}applyViewAsCases();
  notify('رجعت إلى حسابك.','success');render();void loadMemoryFlags();
 }
 function restoreViewAs(){
- try{const v=JSON.parse(localStorage.getItem(VIEW_AS_KEY)||'null');if(v&&v.owner===(state.user?.id||'demo')&&realJudge())state.viewAs={id:v.id,display_name:v.display_name,role:v.role};}catch{}
+ try{const v=JSON.parse(localStorage.getItem(VIEW_AS_KEY)||'null');if(v&&v.owner===(state.user?.id||'demo')&&realJudge()){state.viewAs={id:v.id,display_name:v.display_name,role:v.role};applyViewAsCases();}}catch{}
 }
 const viewAsBlocked=()=>notify('أنت في وضع «عرض بعين الموظف»، والتعديل متوقف. ارجع إلى حسابك أولًا.','error');
 document.addEventListener('click',e=>{
@@ -2398,7 +2404,7 @@ async function loadAll({background=false}={}){if(DEMO){render();return;}if(!stat
  lastDataSnapshot=snapshot;
  if(background&&!changed)return;
  if(outcomes)sessionOutcomes=new Map(outcomes.map(item=>[outcomeKey(item.case_key,item.hearing_date),item]));
- if(cases.error)notify('تعذّر تحديث القضايا: '+cases.error.message,'error');else state.cases=cases.data||[];
+ if(cases.error)notify('تعذّر تحديث القضايا: '+cases.error.message,'error');else{state.cases=cases.data||[];state._allCases=null;applyViewAsCases();}
  if(tasks.error)notify('تعذّر تحديث المهام: '+tasks.error.message,'error');else state.tasks=tasks.data||[];
  if(reports.error)console.warn('Report approvals:',reports.error);else state.reportApprovals=reports.data||[];
  if(notifications.error)console.warn('Notifications:',notifications.error);else {
