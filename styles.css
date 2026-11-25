@@ -238,6 +238,7 @@ button.notice-item{width:100%;text-align:start;font:inherit;color:inherit;cursor
 .case-approval ul{margin:4px 0;padding-inline-start:22px}
 .case-assignee{display:flex;align-items:center;gap:.3rem;margin-top:.35rem;font-size:.78rem;color:#5c6572}
 .session-number{display:inline-flex;align-items:center;gap:.25rem;font-size:.76rem;white-space:nowrap;color:#293547}
+.struck-tag{display:inline-flex;align-items:center;font-size:.68rem;font-weight:600;line-height:1;padding:.18rem .42rem;border-radius:999px;color:#8a4b12;background:#fbeedd;border:1px solid #f0d6b4;white-space:nowrap}
 .session-number i{width:.55rem;height:.55rem;border-radius:50%;background:var(--session-color);flex:none}
 .session-number-early{--session-color:#27864c}
 .session-number-middle{--session-color:#c38908}

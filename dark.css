@@ -223,6 +223,7 @@ html[data-theme="dark"] .bulk-row-label{color:var(--muted)}
 html[data-theme="dark"] .bulk-details{border-top:1px solid var(--border)}
 html[data-theme="dark"] .case-assignee{color:#a7aeb8}
 html[data-theme="dark"] .session-number{color:#bec9d9}
+html[data-theme="dark"] .struck-tag{color:#dbbda1;background:#33281a;border:1px solid #5c4c37}
 html[data-theme="dark"] .session-number i{background:var(--session-color)}
 html[data-theme="dark"] .task-views button{border:1px solid var(--border);background:#131817}
 html[data-theme="dark"] .task-views button[aria-pressed="true"]{border-color:#087967;background:#1a332a;color:#bae5de}

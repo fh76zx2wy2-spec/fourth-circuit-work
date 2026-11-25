@@ -129,7 +129,7 @@ function readHijriPicker(field,required=false){
  return iso?{ok:true,value:iso}:{ok:false,message:'التاريخ الهجري غير صحيح؛ قد يكون الشهر 29 يومًا فقط.'};
 }
 function minutesExtract(caseItem){
-  if(caseItem.stage==='first')return {overview:'جلسة تحضيرية أولى، لا يوجد ضبط جلسة سابقة.',evidence:''};
+  if(caseItem.stage==='first')return {overview:caseItem.struck_before?'سبق شطب الدعوى، وأُعيد السير فيها؛ تُعامل جلسة أولى.':'جلسة تحضيرية أولى، لا يوجد ضبط جلسة سابقة.',evidence:''};
   const original=String(caseItem.previous_minutes||'').trim();
   if(!original)return {overview:'لم يُدخل ضبط الجلسة السابقة بعد.',evidence:''};
   const segments=original.replace(/\r/g,'').split(/(?<=[.؛؟\n])\s*|(?=وقررت\s+الدائرة)|(?=ثم\s+قررت\s+الدائرة)/).map(x=>x.trim()).filter(Boolean);
@@ -173,7 +173,7 @@ function initialForm(date=dayWithinWindow(state.filterDate)?state.filterDate:nex
 const statusTitle = (v)=>({draft:'مسودة',ready:'بانتظار الاعتماد',approved:'معتمدة'}[v]||'مسودة');
 const sessionOrdinals=['','الأولى','الثانية','الثالثة','الرابعة','الخامسة','السادسة','السابعة','الثامنة','التاسعة','العاشرة'];
 function caseStageTitle(c){
- if(c.stage==='first')return 'جلسة تحضيرية (أولى)';
+ if(c.stage==='first')return c.struck_before?'جلسة تحضيرية (أولى) · سبق شطبها':'جلسة تحضيرية (أولى)';
  const n=Number(c.session_number);
  if(!Number.isInteger(n)||n<2||n>100)return 'جلسة لاحقة · رقم الجلسة غير مسجل';
  return sessionOrdinals[n]?`الجلسة ${sessionOrdinals[n]} (${n})`:`الجلسة رقم ${n}`;
@@ -511,11 +511,12 @@ const assignmentDays=new Map();
 let assignmentActor=null;
 let assignmentRefreshRunning=false;
 
+const struckTag=c=>c?.struck_before?'<span class="struck-tag" title="سبق شطب الدعوى ثم أُعيد السير فيها">سبق شطبها</span>':'';
 function sessionNumberBadge(item){
  const number=item.stage==='first'?1:Number(item.session_number);
  if(!Number.isInteger(number)||number<1||number>100)return esc(caseStageTitle(item));
  const color=number<=3?'early':number<=6?'middle':number<=10?'late':'extended';
- return `<span class="session-number session-number-${color}"><i aria-hidden="true"></i>الجلسة ${number}</span>`;
+ return `<span class="session-number session-number-${color}"><i aria-hidden="true"></i>الجلسة ${number}</span>${struckTag(item)}`;
 }
 function sessionTimeKey(value){
  const match=/^(\d{2}:\d{2})(?::(\d{2})(\.\d+)?)?$/.exec(value||'');
@@ -849,7 +850,7 @@ function sheetRow(c){
  if(f&&f.status!=='arrived')flags.push(`<span class="sheet-flag wait">${esc(followupLabel(FOLLOWUP_KINDS,f.kind))} لم ترد</span>`);
  if(reason==='دراسة')flags.push('<span class="sheet-flag ruling">للحكم</span>');
  const mem=memoryBadge(c);
- return `<li class="sheet-row" data-detail="${esc(c.id)}" role="button" tabindex="0"><div class="sheet-time">${esc(tm(c.session_time))}</div><div class="sheet-main"><div class="sheet-head">${caseNumberButton(c.case_number)}<span class="sheet-type">${esc(c.case_type||'قضية')}</span><span class="sheet-stage">${first?'جلسة أولى':Number.isInteger(n)&&n>1?`الجلسة ${n}`:'جلسة لاحقة'}</span>${flags.join('')}${mem}</div><div class="sheet-parties">${esc(short(c.plaintiffs||'',60))} × ${esc(short(c.defendants||'',60))}</div><div class="sheet-line"><b>${first?'الدعوى':'آخر جلسة'}</b><span>${esc(short(first?(c.claim_summary||'لم يُدخل موضوع الدعوى'):sheetLastLine(c),220))}</span></div>${need?`<div class="sheet-line need"><b>المطلوب اليوم</b><span>${esc(need)}</span></div>`:''}</div></li>`;
+ return `<li class="sheet-row" data-detail="${esc(c.id)}" role="button" tabindex="0"><div class="sheet-time">${esc(tm(c.session_time))}</div><div class="sheet-main"><div class="sheet-head">${caseNumberButton(c.case_number)}<span class="sheet-type">${esc(c.case_type||'قضية')}</span><span class="sheet-stage">${first?'جلسة أولى':Number.isInteger(n)&&n>1?`الجلسة ${n}`:'جلسة لاحقة'}</span>${struckTag(c)}${flags.join('')}${mem}</div><div class="sheet-parties">${esc(short(c.plaintiffs||'',60))} × ${esc(short(c.defendants||'',60))}</div><div class="sheet-line"><b>${first?'الدعوى':'آخر جلسة'}</b><span>${esc(short(first?(c.claim_summary||'لم يُدخل موضوع الدعوى'):sheetLastLine(c),220))}</span></div>${need?`<div class="sheet-line need"><b>المطلوب اليوم</b><span>${esc(need)}</span></div>`:''}</div></li>`;
 }
 // «منذ 8 ساعات و19 دقيقة»
 function agoWord(iso){
