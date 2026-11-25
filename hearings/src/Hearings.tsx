@@ -531,7 +531,7 @@ export function Index() {
           <h2 className="text-sm font-semibold text-muted-foreground">معاينة الصورة المحفوظة</h2>
           {ready ? (
             <ScaledPreview>
-              <ExportCard ref={cardRef} hearings={sortChrono(hearings)} dates={dates} active={active} counts={counts} creator={creators[date] ?? profile?.display_name} />
+              <ExportCard ref={cardRef} hearings={sortChrono(hearings)} date={date} dates={dates} active={active} counts={counts} creator={creators[date] ?? profile?.display_name} />
             </ScaledPreview>
           ) : (
             <div className="rounded-2xl border-2 border-dashed border-gold/60 bg-card p-10 text-center shadow-card">
@@ -661,8 +661,9 @@ function Arches({ className }: { className?: string }) {
   );
 }
 
-const ExportCard = forwardRef<HTMLDivElement, { hearings: Hearing[]; dates: { weekday: string; hijri: string; greg: string }; active: string[]; counts: Record<string, number>; creator?: string }>(
-  function ExportCard({ hearings, dates, active, counts, creator }, ref) {
+const ExportCard = forwardRef<HTMLDivElement, { hearings: Hearing[]; date?: string; dates: { weekday: string; hijri: string; greg: string }; active: string[]; counts: Record<string, number>; creator?: string }>(
+  function ExportCard({ hearings, date, dates, active, counts, creator }, ref) {
+    const caseNos = (globalThis as { __organizerCaseNumbers?: (d: string, h: Hearing[]) => string[] }).__organizerCaseNumbers?.(date ?? "", hearings) ?? [];
     return (
       <div ref={ref} id="export-card" dir="rtl" className="bg-parchment text-navy-deep font-sans" style={{ width: CARD_W }}>
         <div className="relative bg-gradient-navy text-primary-foreground px-12 pt-10 pb-8 text-center overflow-hidden">
@@ -687,6 +688,7 @@ const ExportCard = forwardRef<HTMLDivElement, { hearings: Hearing[]; dates: { we
               <tr className="bg-navy text-primary-foreground">
                 <th className="py-3 px-4 w-24 rounded-tr-xl font-semibold">م</th>
                 <th className="py-3 px-4 text-start font-semibold">الموظف المكلّف</th>
+                <th className="py-3 px-4 w-56 font-semibold">رقم القضية</th>
                 <th className="py-3 px-4 w-44 rounded-tl-xl font-semibold">الوقت</th>
               </tr>
             </thead>
@@ -695,6 +697,7 @@ const ExportCard = forwardRef<HTMLDivElement, { hearings: Hearing[]; dates: { we
                 <tr key={h.id} className={i % 2 ? "bg-gold-soft/50" : "bg-card"}>
                   <td className="py-3 px-4 text-center font-bold text-navy border-b border-border">{i + 1}</td>
                   <td className="py-3 px-4 font-medium border-b border-border">{h.clerk}</td>
+                  <td className="py-3 px-4 text-center font-semibold border-b border-border tabular-nums" dir="ltr">{caseNos[i] || "—"}</td>
                   <td className="py-3 px-4 text-center font-semibold border-b border-border whitespace-nowrap">{formatTimeRange(h, hearings)}</td>
                 </tr>
               ))}

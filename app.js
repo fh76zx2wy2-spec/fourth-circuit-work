@@ -2568,13 +2568,15 @@ function showHearings(){
    if(c.session_end_time){const [eh,em]=String(c.session_end_time).split(':').map(Number);if(eh*60+em>slot.h*60+slot.m&&eh*60+em<=15*60){slot.endH=eh;slot.endM=em;}}
    return slot;})
   .sort((a,b)=>a.h*60+a.m-(b.h*60+b.m));
+ // رقم القضية لكل جلسة في جدول التوزيع، بمطابقة الوقت مع جلسات المنظم لذلك اليوم.
+ globalThis.__organizerCaseNumbers=(date,hs)=>{const key=t=>{const [h,m]=String(t).split(':').map(Number);const hh=Math.min(14,Math.max(8,h||8));return hh+':'+(hh===14?0:Math.min(59,Math.max(0,m||0)));};const pool=new Map();state.cases.filter(c=>c.session_date===date&&!c.deleted_at&&c.session_time).sort((a,b)=>String(a.session_time).localeCompare(String(b.session_time))||String(a.case_number).localeCompare(String(b.case_number))).forEach(c=>{const k=key(c.session_time);if(!pool.has(k))pool.set(k,[]);pool.get(k).push(c.case_number);});return (hs||[]).map(h=>pool.get(h.h+':'+h.m)?.shift()||'');};
  // الاسم الكامل لمنشئ الجدول في الصورة المحفوظة.
  globalThis.__hearingsCreatorName=name=>{const n=String(name||'');
   if(/الشريف|عبد ?الرحمن/.test(n))return 'عبد الرحمن يحيى علي الشريف';
   if(/بكري|^يحيى/.test(n))return 'يحيى محمد إبراهيم بكري';
   if(/زياد|البابطين/.test(n))return 'زياد بن محمد البابطين';
   return n;};
- hearingsMount=import('./assets/hearings/main.js?v=5.0.36').then(module=>{
+ hearingsMount=import('./assets/hearings/main.js?v=5.0.37').then(module=>{
   module.mount(hearingsContainer,{
    getToken:async()=>state.client?(await state.client.auth.getSession()).data.session?.access_token??null:null,
    subscribe:listener=>{
