@@ -766,3 +766,5 @@ html[data-theme="dark"] .lc-n{color:#f0925f}html[data-theme="dark"] .lc-done{col
 .watermark{position:fixed;inset:0;z-index:9000;pointer-events:none;background-repeat:repeat;background-size:460px 230px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 @media print{.watermark{display:block!important;visibility:visible!important}}
 .time-end{display:block;margin-top:-2px;font-size:11px;color:var(--muted,#6b7a76);text-align:center;white-space:nowrap}
+/* إطار القضية المنظورة الآن — يعلو على النمط الزجاجي */
+.circuit-app .case-row.case-session-current,html:not(.classic) .circuit-app .case-row.case-session-current{border:1.5px solid var(--green)!important;background-color:var(--green-bg)!important;box-shadow:inset 0 0 0 1px var(--green),0 6px 18px rgba(12,136,109,.14)!important}

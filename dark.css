@@ -468,6 +468,7 @@ html[data-theme="dark"] .settings-link span{color:var(--muted)}
 html[data-theme="dark"] .settings-link:hover{border-color:var(--brown)}
 html[data-theme="dark"] .settings-link.danger{color:#d4968c}
 html[data-theme="dark"] .time-end{color:var(--muted,#a3aeab)}
+html[data-theme="dark"] .circuit-app .case-row.case-session-current,html[data-theme="dark"]:not(.classic) .circuit-app .case-row.case-session-current{border:1.5px solid var(--green)!important;background-color:var(--green-bg)!important}
 /* diwan/workspace.css */
 html[data-theme="dark"] #diwan-slot .diwan-page-head p{color:var(--muted)}
 html[data-theme="dark"] #diwan-slot .diwan-status{color:var(--text)}
