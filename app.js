@@ -927,8 +927,9 @@ async function saveCircuitSetting(key,value){
  if(error)notify('تعذّر حفظ الإعداد: '+error.message,'error');
 }
 function watermarkLayer(){
- if(!state.profile||(isJudge()&&!state.viewAs))return '';
- if(state.circuit?.staff_watermark===false)return '';
+ if(!state.profile)return '';
+ const forJudge=isJudge()&&!state.viewAs;
+ if(forJudge?state.circuit?.judge_watermark===false:state.circuit?.staff_watermark===false)return '';
  const name=shortName(state.viewAs?state.viewAs.display_name:state.profile.display_name)||'';
  const text=`${name} · ${hijriLong(todayRiyadh())}`;
  const dark=document.documentElement.dataset.theme==='dark';
@@ -972,8 +973,9 @@ function settingsModal(){
   ${toggle('morning_brief','ورقة جلسات اليوم','الساعة 7:30 صباحًا من الأحد إلى الخميس')}
   ${toggle('weekly_report','تقرير الأسبوع','مساء السبت الساعة 9:40')}
  </section>
- <section class="settings-group"><h3>الموظفون</h3>
-  <label class="settings-toggle"><span><b>العلامة المائية على شاشاتهم</b><small>اسم الموظف وتاريخ اليوم بخط باهت على شاشته وما يطبعه</small></span><input type="checkbox" data-circuit-setting="staff_watermark" ${state.circuit?.staff_watermark===false?'':'checked'}/><i aria-hidden="true"></i></label>
+ <section class="settings-group"><h3>العلامة المائية <small>الاسم وتاريخ اليوم بخط باهت على الشاشة وما يُطبع</small></h3>
+  <label class="settings-toggle"><span><b>على شاشتي</b><small>تظهر باسمك على أجهزتك</small></span><input type="checkbox" data-circuit-setting="judge_watermark" ${state.circuit?.judge_watermark===false?'':'checked'}/><i aria-hidden="true"></i></label>
+  <label class="settings-toggle"><span><b>على شاشات الموظفين</b><small>باسم كل موظف، ولا يملكون إزالتها</small></span><input type="checkbox" data-circuit-setting="staff_watermark" ${state.circuit?.staff_watermark===false?'':'checked'}/><i aria-hidden="true"></i></label>
  </section>
  <section class="settings-group"><h3>الأمان</h3>
   <div class="settings-row"><span>الخروج التلقائي بعد عدم الاستخدام</span>${seg('idle',idle,[['1','ساعة'],['2','ساعتان'],['4','4 ساعات']])}</div>
