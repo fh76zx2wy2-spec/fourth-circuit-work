@@ -586,16 +586,11 @@ function priorOutcome(c){
  return sessionOutcomes.get(outcomeKey(c.case_number,c.previous_date))??null;
 }
 function outcomeLabel(item){return item.is_result?'نتيجة الجلسة السابقة':'سبب رفع الجلسة السابقة';}
+// سبب الرفع يُستخرج آليًا من الضبط فقط، ويُعرض للاطلاع دون إدخال يدوي.
 function outcomeEditor(c){
- if(c.stage!=='followup'||!c.previous_date||c.previous_date>=c.session_date||!c.previous_minutes?.trim()||DEMO)return '';
  const item=priorOutcome(c);
- return `<form id="session-outcome-form" class="detail-field detail-wide">
-  <label for="session-outcome-text">${item?outcomeLabel(item):'سبب الرفع أو نتيجة الجلسة السابقة'}</label>
-  ${item?.evidence?`<p class="quote-text"><small>قرينة من ضبط الجلسة</small><br>${esc(item.evidence)}</p>`:''}
-  <input id="session-outcome-text" name="outcome" maxlength="180" value="${esc(item?.outcome??'')}" placeholder="أدخل السبب إذا لم يتضح من الضبط">
-  <label><input type="checkbox" name="isResult" ${item?.is_result?'checked':''}> نتيجة قضائية (مثل الحكم أو الشطب)</label>
-  <button class="btn btn-small btn-soft" type="submit">حفظ سبب الرفع أو النتيجة</button>
- </form>`;
+ if(!item?.outcome)return '';
+ return `<div class="detail-field detail-wide"><small>${outcomeLabel(item)}</small><p>${esc(pii(item.outcome))}</p></div>`;
 }
 async function saveSessionOutcome(form){
  const id=state.detailId;
