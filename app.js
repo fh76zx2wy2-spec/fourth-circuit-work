@@ -206,7 +206,7 @@ function shell(){
   <div class="content">${inDiwan?'':`<nav class="service-tiles" aria-label="أقسام الدائرة">
    ${nav.map(([key,label,icon])=>`<button class="service-tile ${currentSection===key?'active':''}" data-nav="${key}"${navCurrent(key)}><span class="tile-symbol" aria-hidden="true">${icon}</span><span class="tile-full">${label}</span><span class="tile-short">${TILE_SHORT[key]||label}</span></button>`).join('')}
   </nav>`}${DEMO?`<div class="banner"><strong>واجهة تجريبية فارغة — الحفظ محلي حاليًا</strong>لا يوجد اتصال بقاعدة بيانات مشتركة بعد؛ ما يُحفظ هنا يبقى على هذا الجهاز فقط. يرجى عدم إدخال محاضر أو بيانات قضايا حقيقية حتى اكتمال الربط الآمن.</div>`:''}
-  ${state.booting?bootSkeleton():state.screen==='submission'?submissionPage():state.screen==='dashboard'?dashboard():state.screen==='tasks'?tasksPage():state.screen==='review'?reviewPage():state.screen==='stats'&&isJudge()?statsPage():state.screen==='hearings'?'<div id="hearings-slot"></div>':inDiwan?'<section id="diwan-slot" aria-label="ديوان القضايا"></section>':sessionsPage()}</div></main></div>${state.editorId!==null?editorModal():''}${state.detailId!==null?detailModal():''}${state.taskEditorId!==null?taskEditor():''}${bulkEntry?bulkEditor():''}${state.settingsOpen&&!state.viewAs?settingsModal():''}`;
+  ${state.booting?bootSkeleton():state.screen==='submission'?submissionPage():state.screen==='dashboard'?dashboard():state.screen==='tasks'?tasksPage():state.screen==='review'?reviewPage():state.screen==='stats'&&isJudge()?statsPage():state.screen==='hearings'?'<div id="hearings-slot"></div>':inDiwan?'<section id="diwan-slot" aria-label="ديوان القضايا"></section>':sessionsPage()}</div></main></div>${state.editorId!==null?editorModal():''}${state.detailId!==null?detailModal():''}${state.taskEditorId!==null?taskEditor():''}${bulkEntry?bulkEditor():''}${state.settingsOpen&&!state.viewAs?settingsModal():''}${watermarkLayer()}`;
 }
 const senderNames=new Set(['يحيى محمد إبراهيم بكري','عبد الرحمن يحيى علي الشريف']);
 const isSubmissionSender=()=>!DEMO&&state.profile?.role==='secretary'&&senderNames.has(state.profile.display_name);
@@ -913,6 +913,29 @@ function weeklyPage(){
 
 // ================= الإعدادات =================
 const IDLE_HOURS_KEY='fourth-circuit-idle-hours';
+// ===== العلامة المائية على شاشات الموظفين (يتحكم بها القاضي) =====
+async function loadCircuitSettings(){
+ if(DEMO||!state.client)return;
+ const {data,error}=await state.client.from('circuit_settings').select('key,value');
+ if(error)return;
+ const next=Object.fromEntries((data||[]).map(r=>[r.key,r.value]));
+ if(JSON.stringify(next)!==JSON.stringify(state.circuit||{})){state.circuit=next;render();}
+}
+async function saveCircuitSetting(key,value){
+ state.circuit={...(state.circuit||{}),[key]:value};render();
+ const {error}=await state.client.from('circuit_settings').upsert({key,value,updated_at:new Date().toISOString()});
+ if(error)notify('تعذّر حفظ الإعداد: '+error.message,'error');
+}
+function watermarkLayer(){
+ if(!state.profile||(isJudge()&&!state.viewAs))return '';
+ if(state.circuit?.staff_watermark===false)return '';
+ const name=shortName(state.viewAs?state.viewAs.display_name:state.profile.display_name)||'';
+ const text=`${name} · ${hijriLong(todayRiyadh())}`;
+ const dark=document.documentElement.dataset.theme==='dark';
+ const fill=dark?'rgba(255,255,255,0.075)':'rgba(10,70,58,0.085)';
+ const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="460" height="230"><text x="230" y="125" text-anchor="middle" transform="rotate(-24 230 115)" font-family="IBM Plex Sans Arabic,Tahoma,sans-serif" font-size="17" font-weight="600" fill="${fill}" direction="rtl">${text.replace(/[<&>"]/g,'')}</text></svg>`;
+ return `<div class="watermark" aria-hidden="true" style="background-image:url('data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}')"></div>`;
+}
 let judgePrefs=null;
 async function loadJudgePrefs(){
  if(!isJudge()||DEMO||!state.client)return;
@@ -948,6 +971,9 @@ function settingsModal(){
  ${judge?`<section class="settings-group"><h3>الإشعارات على الجوال</h3>
   ${toggle('morning_brief','ورقة جلسات اليوم','الساعة 7:30 صباحًا من الأحد إلى الخميس')}
   ${toggle('weekly_report','تقرير الأسبوع','مساء السبت الساعة 9:40')}
+ </section>
+ <section class="settings-group"><h3>الموظفون</h3>
+  <label class="settings-toggle"><span><b>العلامة المائية على شاشاتهم</b><small>اسم الموظف وتاريخ اليوم بخط باهت على شاشته وما يطبعه</small></span><input type="checkbox" data-circuit-setting="staff_watermark" ${state.circuit?.staff_watermark===false?'':'checked'}/><i aria-hidden="true"></i></label>
  </section>
  <section class="settings-group"><h3>الأمان</h3>
   <div class="settings-row"><span>الخروج التلقائي بعد عدم الاستخدام</span>${seg('idle',idle,[['1','ساعة'],['2','ساعتان'],['4','4 ساعات']])}</div>
@@ -2405,6 +2431,7 @@ async function loadAll({background=false}={}){if(DEMO){render();return;}if(!stat
  if(background&&!changed)return;
  if(outcomes)sessionOutcomes=new Map(outcomes.map(item=>[outcomeKey(item.case_key,item.hearing_date),item]));
  if(cases.error)notify('تعذّر تحديث القضايا: '+cases.error.message,'error');else{state.cases=cases.data||[];state._allCases=null;applyViewAsCases();}
+ void loadCircuitSettings();
  if(tasks.error)notify('تعذّر تحديث المهام: '+tasks.error.message,'error');else state.tasks=tasks.data||[];
  if(reports.error)console.warn('Report approvals:',reports.error);else state.reportApprovals=reports.data||[];
  if(notifications.error)console.warn('Notifications:',notifications.error);else {
@@ -2564,7 +2591,7 @@ function showHearings(){
   hearingsContainer.textContent='تعذّر فتح توزيع الجلسات. اختر القسم مجددًا للمحاولة.';
  });
 }
-document.addEventListener('change',e=>{const jp=e.target.closest?.('[data-judge-pref]');if(jp&&!state.viewAs)void saveJudgePref(jp.dataset.judgePref,jp.checked);});
+document.addEventListener('change',e=>{const jp=e.target.closest?.('[data-judge-pref]');if(jp&&!state.viewAs)void saveJudgePref(jp.dataset.judgePref,jp.checked);const cs=e.target.closest?.('[data-circuit-setting]');if(cs&&!state.viewAs&&isJudge())void saveCircuitSetting(cs.dataset.circuitSetting,cs.checked);});
 window.addEventListener('hashchange',openNotificationLink);
 if(location.hash==='#hearings')state.screen='hearings';
 init();
