@@ -765,3 +765,4 @@ html[data-theme="dark"] .lc-n{color:#f0925f}html[data-theme="dark"] .lc-done{col
 /* العلامة المائية للموظفين: فوق كل شيء، لا تعترض النقر، وتظهر في الطباعة */
 .watermark{position:fixed;inset:0;z-index:9000;pointer-events:none;background-repeat:repeat;background-size:460px 230px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 @media print{.watermark{display:block!important;visibility:visible!important}}
+.time-end{display:block;margin-top:-2px;font-size:11px;color:var(--muted,#6b7a76);text-align:center;white-space:nowrap}

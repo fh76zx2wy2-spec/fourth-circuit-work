@@ -467,6 +467,7 @@ html[data-theme="dark"] .settings-link{border:1px solid var(--border);background
 html[data-theme="dark"] .settings-link span{color:var(--muted)}
 html[data-theme="dark"] .settings-link:hover{border-color:var(--brown)}
 html[data-theme="dark"] .settings-link.danger{color:#d4968c}
+html[data-theme="dark"] .time-end{color:var(--muted,#a3aeab)}
 /* diwan/workspace.css */
 html[data-theme="dark"] #diwan-slot .diwan-page-head p{color:var(--muted)}
 html[data-theme="dark"] #diwan-slot .diwan-status{color:var(--text)}
