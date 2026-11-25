@@ -511,7 +511,7 @@ const assignmentDays=new Map();
 let assignmentActor=null;
 let assignmentRefreshRunning=false;
 
-const struckTag=c=>c?.struck_before?'<span class="struck-tag" title="سبق شطب الدعوى ثم أُعيد السير فيها">سبق شطبها</span>':'';
+const struckTag=c=>{if(!c?.struck_before)return '';if(c.stage==='first')return '<span class="struck-tag" title="شُطبت الدعوى في جلستها الأولى ثم أُعيد السير فيها">سبق شطبها</span>';const n=Number(c.session_number)-1;return `<span class="struck-tag" title="شُطبت الدعوى في الجلسة الماضية ثم أُعيد السير فيها">${Number.isInteger(n)&&n>0?`شُطبت في الجلسة ${n}`:'شُطبت في الجلسة الماضية'}</span>`;};
 function sessionNumberBadge(item){
  const number=item.stage==='first'?1:Number(item.session_number);
  if(!Number.isInteger(number)||number<1||number>100)return esc(caseStageTitle(item));
