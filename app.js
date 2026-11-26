@@ -773,11 +773,11 @@ function longCard(L){
  const dShort=iso=>{try{return new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura-nu-latn',{day:'numeric',month:'long',timeZone:'UTC'}).format(new Date(iso+'T12:00:00Z'));}catch{return iso;}};
  const sw=n=>n<=10?`${n} جلسات`:`${n} جلسة`;
  const open=(L.open||[]).map(x=>`<li>${caseNumberButton(x.case)}<span class="lc-n">${sw(x.n)}</span>${x.next?`<span class="lc-next">القادمة ${esc(dShort(x.next))}</span>`:'<span class="lc-next warn">بلا موعد قادم</span>'}</li>`).join('');
- const done=(L.done||[]).map(x=>`<li>${caseNumberButton(x.case)}<span class="lc-n">${sw(x.n)}</span><span class="lc-done">✓ صدر الحكم${x.ref?` · صك ${esc(x.ref)}`:''}</span></li>`).join('');
+ const done=(L.done||[]).map(x=>`<li>${caseNumberButton(x.case)}<span class="lc-n">${sw(x.n)}</span><span class="lc-done">${x.how==='انتهت جلساتها'?`✓ آخر جلسة ${esc(dShort(String(x.at).slice(0,10)))} · بانتظار الصك`:`✓ صدر الحكم${x.ref?` · صك ${esc(x.ref)}`:''}`}</span></li>`).join('');
  return `<section class="stats-card wide long-card"><h3>القضايا المطوّلة <small>خمس جلسات فأكثر</small></h3>
  <div class="lc-progress"><div class="lc-bar"><i style="--w:${pct}%"></i></div><b>انتهى ${L.ended} من ${L.total}</b></div>
  <div class="lc-cols"><div><h4>قائمة <span>${(L.open||[]).length}</span></h4><ul>${open||'<li class="muted">لا توجد</li>'}</ul></div><div><h4>انتهت <span>${(L.done||[]).length}</span></h4><ul>${done||'<li class="muted">لم تنته قضية مطوّلة بعد</li>'}</ul></div></div>
- <p class="stats-note">تُعدّ القضية منتهية عند أرشفة حكمها أو تسجيل الحكم في ضبط الجلسة. «بلا موعد قادم» تستحق التحقق.</p></section>`;
+ <p class="stats-note">تُعدّ القضية منتهية عند أرشفة حكمها، أو إذا مضت آخر جلسة لها دون موعد قادم في تقاضي؛ وتعود قائمة تلقائيًا إن حُدّد لها موعد.</p></section>`;
 }
 
 // ================= تخطيط الإجازة (للقاضي فقط) =================
